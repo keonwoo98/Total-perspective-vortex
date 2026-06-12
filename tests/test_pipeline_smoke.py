@@ -20,3 +20,38 @@ def test_train_creates_artifact_and_returns_mean(tmp_path, monkeypatch, capsys):
     assert set(art.keys()) == {"pipeline", "X_test", "y_test", "meta"}
     assert art["meta"]["experiment"] == 3
     assert art["X_test"].shape[0] == art["y_test"].shape[0] > 0
+
+
+@pytest.mark.network
+def test_predict_streams_and_reports_accuracy(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(config, "MODELS_DIR", tmp_path)
+    monkeypatch.setenv("TPV_SEED", "42")
+    train.train(1, 14)
+    capsys.readouterr()  # clear train output
+
+    from tpv import predict
+    acc = predict.predict(1, 14)
+    out = capsys.readouterr().out
+    assert "epoch 00:" in out
+    assert "Accuracy:" in out
+    assert 0.0 <= acc <= 1.0
+
+
+@pytest.mark.network
+def test_predict_per_chunk_latency_under_2s(tmp_path, monkeypatch):
+    import time, joblib
+    monkeypatch.setattr(config, "MODELS_DIR", tmp_path)
+    monkeypatch.setenv("TPV_SEED", "42")
+    train.train(1, 14)
+    art = joblib.load(train.artifact_path(1, 14))
+    pipe, X_test = art["pipeline"], art["X_test"]
+    t0 = time.perf_counter()
+    pipe.predict(X_test[0:1])
+    assert (time.perf_counter() - t0) < 2.0
+
+
+def test_predict_missing_artifact_raises(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "MODELS_DIR", tmp_path)
+    from tpv import predict
+    with pytest.raises(FileNotFoundError):
+        predict.predict(1, 14)
