@@ -1,9 +1,8 @@
 """Predict mode: replay persisted held-out epochs as a simulated stream (<2s/chunk)."""
 import time
-import joblib
-import numpy as np
 
-from tpv import config
+import joblib
+
 from tpv.train import artifact_path
 
 LATENCY_BUDGET_S = 2.0

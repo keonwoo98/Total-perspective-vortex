@@ -1,4 +1,6 @@
 """Train mode: cross_val_score report + fit + persist artifact."""
+from pathlib import Path
+
 import joblib
 import numpy as np
 from sklearn.model_selection import ShuffleSplit, cross_val_score, train_test_split
@@ -7,9 +9,9 @@ from tpv import config, preprocessing
 from tpv.pipeline import build_pipeline
 
 
-def artifact_path(subject: int, run: int):
+def artifact_path(subject: int, run: int) -> Path:
+    """Pure path query (no side effects). train() creates the parent dir."""
     exp = config.RUN_TO_EXPERIMENT[run]
-    config.MODELS_DIR.mkdir(parents=True, exist_ok=True)
     return config.MODELS_DIR / f"subj{subject:03d}_run{run:02d}_exp{exp}.joblib"
 
 
@@ -40,5 +42,7 @@ def train(subject: int, run: int) -> float:
                  "tmin": config.TMIN, "tmax": config.TMAX,
                  "n_components": config.N_COMPONENTS},
     }
-    joblib.dump(artifact, artifact_path(subject, run))
+    path = artifact_path(subject, run)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(artifact, path)
     return float(scores.mean())
