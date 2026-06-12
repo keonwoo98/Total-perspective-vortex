@@ -55,3 +55,22 @@ def test_predict_missing_artifact_raises(tmp_path, monkeypatch):
     from tpv import predict
     with pytest.raises(FileNotFoundError):
         predict.predict(1, 14)
+
+
+@pytest.mark.network
+def test_run_all_single_subject_returns_grand_mean(monkeypatch, capsys):
+    monkeypatch.setenv("TPV_SEED", "42")
+    from tpv import evaluate
+    grand = evaluate.run_all(subjects=[1], experiments=range(6))
+    out = capsys.readouterr().out
+    assert "experiment 0:" in out
+    assert "Mean accuracy of 6 experiments" in out
+    assert 0.0 <= grand <= 1.0
+
+
+@pytest.mark.network
+def test_compare_classifiers_returns_all(monkeypatch):
+    from tpv import evaluate
+    scores = evaluate.compare_classifiers(1, 3)
+    assert set(scores.keys()) == {"lda", "svm", "logreg", "rf"}
+    assert all(0.0 <= v <= 1.0 for v in scores.values())
