@@ -1,4 +1,3 @@
-import numpy as np
 import pytest
 from sklearn.model_selection import ShuffleSplit, cross_val_score
 from tpv import preprocessing
