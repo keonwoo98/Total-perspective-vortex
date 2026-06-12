@@ -6,6 +6,11 @@
 """
 import argparse
 import sys
+from pathlib import Path
+
+# Make `tpv` importable no matter how this script is invoked: running
+# `python scripts/validate_60.py` puts scripts/ (not the repo root) on sys.path[0].
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tpv import config
 from tpv.evaluate import run_all
