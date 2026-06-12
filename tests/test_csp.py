@@ -3,6 +3,8 @@ from sklearn.base import clone
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.pipeline import Pipeline
 from tpv.csp import MyCSP
+from tpv.pipeline import build_pipeline
+from mne.decoding import CSP as MneCSP
 
 
 def _synthetic(n_per_class=40, n_ch=8, n_times=160, seed=0):
@@ -50,3 +52,21 @@ def test_clone_compatibility():
     csp = MyCSP(n_components=6, reg=0.05)
     c2 = clone(csp)
     assert c2.get_params() == {"n_components": 6, "reg": 0.05}
+
+
+def test_build_pipeline_default_is_scratch_lda():
+    pipe = build_pipeline()
+    assert list(dict(pipe.steps).keys()) == ["csp", "clf"]
+    assert isinstance(pipe.named_steps["csp"], MyCSP)
+    assert isinstance(pipe.named_steps["clf"], LinearDiscriminantAnalysis)
+
+
+def test_build_pipeline_mne_csp_option():
+    pipe = build_pipeline(csp="mne")
+    assert isinstance(pipe.named_steps["csp"], MneCSP)
+
+
+def test_build_pipeline_classifier_choices():
+    for clf in ("lda", "svm", "logreg", "rf"):
+        pipe = build_pipeline(clf=clf)
+        assert pipe.named_steps["clf"] is not None
