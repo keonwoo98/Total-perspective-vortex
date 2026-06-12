@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+mne_data/
+models/
+*.joblib
+*.pkl
+.DS_Store
+.pytest_cache/
+docs/superpowers/specs/*.bak
