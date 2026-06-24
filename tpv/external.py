@@ -2,8 +2,8 @@
 
 load_external(subject) returns (X, y) in the same (n_epochs, n_channels, n_times) float64 /
 int{0,1} contract as preprocessing.build_dataset, so the existing CSP+classifier pipeline runs
-unchanged (MyCSP is channel-count-agnostic). moabb is an OPTIONAL dependency (requirements-bonus.txt),
-lazily imported here so the mandatory project works without it. This is an INDEPENDENT run on a
+unchanged (MyCSP is channel-count-agnostic). moabb is in requirements.txt; it is lazily imported
+here so importing tpv never loads moabb's heavy tree unless load_external is called. This is an INDEPENDENT run on a
 different dataset (22 channels, 250 Hz) — not merged with the PhysioNet data.
 """
 import numpy as np
@@ -17,15 +17,14 @@ def load_external(subject: int = 1):
     """Load BNCI2014_001 (BCI IV-2a) left-vs-right-hand motor imagery for one subject.
 
     Returns (X, y): X float64 (n_epochs, n_channels, n_times), y int in {0, 1}.
-    Requires the optional moabb dependency: pip install -r requirements-bonus.txt
+    Requires moabb (listed in requirements.txt).
     """
     try:
         from moabb.datasets import BNCI2014_001
         from moabb.paradigms import LeftRightImagery
     except ImportError as exc:
         raise ImportError(
-            "load_external needs the optional 'moabb' dependency: "
-            "pip install -r requirements-bonus.txt"
+            "load_external needs 'moabb' (in requirements.txt): pip install -r requirements.txt"
         ) from exc
 
     paradigm = LeftRightImagery(fmin=config.FMIN, fmax=config.FMAX)

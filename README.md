@@ -95,13 +95,10 @@ Five extra features, none of which alter the default `train` / `predict` / `run_
 
 Demo all five on one subject:
 ```bash
-python scripts/bonus_demo.py        # subject 1 (item G prints an install hint unless moabb is present)
+python scripts/bonus_demo.py        # subject 1 (runs all five, including the 2nd dataset)
 ```
 
-The second dataset (G) needs the optional `moabb` dependency, installed in a **separate venv** so it
-never perturbs the verified mandatory pipeline:
-```bash
-python3.12 -m venv .venv-bonus
-.venv-bonus/bin/pip install -r requirements.txt -r requirements-bonus.txt
-.venv-bonus/bin/python scripts/bonus_demo.py     # now item G runs too
-```
+Everything — mandatory + all five bonuses — runs in the **single venv** from one
+`pip install -r requirements.txt` (`moabb`, used by item G, is included). Installing moabb does not
+change the pinned core libraries (numpy / scipy / scikit-learn / mne), so the mandatory numerics
+(0.658) are unaffected.

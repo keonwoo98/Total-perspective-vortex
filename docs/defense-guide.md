@@ -200,10 +200,9 @@ scripts/
 - **C. 하이퍼파라미터 튜닝 (`evaluate.tune`)** — `GridSearchCV`로 n_components(4/6/8)를 **누수 없이** 자동 탐색. 사용: `python mybci.py 4 14 tune`. → *Implementations*
 - **D. 자작 LDA (`tpv/own_lda.py`)** — 분류기를 numpy로 직접(클래스 평균·공분산·`w=Σ⁻¹(μ1-μ0)`). sklearn LDA와 패리티. 사용: `build_pipeline(clf="own-lda")`. → *Implementations*
 - **F. FBCSP (`tpv/fbcsp.py`)** — 7–30Hz를 **4개 작은 밴드로 쪼개 밴드마다 CSP** → 특징 8개. "특징공학 + 더 복잡한 차원축소". 사용: `build_pipeline(csp="fbcsp")`. → *Feature engineering*
-- **G. 다른 데이터셋 (`tpv/external.py`)** — **BCI Competition IV-2a**(moabb)로 좌/우손 분류. 다른 실험실·장비(22ch/250Hz)인데도 우리 파이프라인 그대로 동작, **정확도 0.85**. moabb는 **별도 venv**에 격리(필수 환경 무손상). → *Datasets*
+- **G. 다른 데이터셋 (`tpv/external.py`)** — **BCI Competition IV-2a**(moabb)로 좌/우손 분류. 다른 실험실·장비(22ch/250Hz)인데도 우리 파이프라인 그대로 동작, **정확도 0.85**. moabb는 `requirements.txt`에 포함(설치해도 핵심 라이브러리 버전 안 바뀜 → 필수 무손상). → *Datasets*
 
-**보너스 한 방 시연**: `python scripts/bonus_demo.py` (G는 moabb 설치 시 함께 표시).
-moabb 설치(선택): 별도 venv에서 `pip install -r requirements.txt -r requirements-bonus.txt`.
+**보너스 한 방 시연**: `python scripts/bonus_demo.py` (5개 전부, G 포함). moabb는 `requirements.txt`에 포함돼 별도 설치·별도 venv 불필요 — `pip install -r requirements.txt` 한 번이면 전부 동작.
 
 ---
 
