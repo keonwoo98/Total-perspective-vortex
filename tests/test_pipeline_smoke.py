@@ -72,3 +72,12 @@ def test_compare_classifiers_returns_all(monkeypatch):
     scores = evaluate.compare_classifiers(1, 3)
     assert set(scores.keys()) == {"lda", "svm", "logreg", "rf"}
     assert all(0.0 <= v <= 1.0 for v in scores.values())
+
+
+@pytest.mark.network
+def test_tune_returns_best_params(monkeypatch):
+    monkeypatch.setenv("TPV_SEED", "42")
+    from tpv import evaluate
+    best_params, best_score = evaluate.tune(1, 3)
+    assert "csp__n_components" in best_params
+    assert 0.0 <= best_score <= 1.0

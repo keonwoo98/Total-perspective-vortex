@@ -10,13 +10,15 @@ import sys
 
 from tpv.train import train
 from tpv.predict import predict
-from tpv.evaluate import run_all
+from tpv.evaluate import run_all, tune
+from tpv import config
 
 USAGE = (
     "usage:\n"
     "  python mybci.py                      # all 6 experiments x 109 subjects\n"
     "  python mybci.py <subject 1-109> <run 3-14> train\n"
     "  python mybci.py <subject 1-109> <run 3-14> predict\n"
+    "  python mybci.py <subject 1-109> <run 3-14> tune\n"
 )
 
 
@@ -46,13 +48,15 @@ def main(argv: list[str] | None = None) -> int:
         return _fail(f"error: subject {subject} out of range 1..109")
     if not (3 <= run <= 14):
         return _fail(f"error: run {run} out of range 3..14 (1/2 are baseline)")
-    if mode not in ("train", "predict"):
-        return _fail(f"error: mode must be train|predict, got {mode!r}")
+    if mode not in ("train", "predict", "tune"):
+        return _fail(f"error: mode must be train|predict|tune, got {mode!r}")
 
     if mode == "train":
         train(subject, run)
-    else:
+    elif mode == "predict":
         predict(subject, run)
+    else:  # tune (opt-in bonus) — map run -> its experiment
+        tune(subject, config.RUN_TO_EXPERIMENT[run])
     return 0
 
 
