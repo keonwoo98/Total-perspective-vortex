@@ -51,7 +51,7 @@ def test_csp_separates_synthetic_classes():
 def test_clone_compatibility():
     csp = MyCSP(n_components=6, reg=0.05)
     c2 = clone(csp)
-    assert c2.get_params() == {"n_components": 6, "reg": 0.05}
+    assert c2.get_params() == {"n_components": 6, "reg": 0.05, "solver": "eigh"}
 
 
 def test_build_pipeline_default_is_scratch_lda():

@@ -33,3 +33,10 @@ def test_invalid_run_errors():
 
 def test_bad_arity_errors():
     assert mybci.main(["4", "14"]) != 0             # missing mode
+
+
+def test_tune_dispatch(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(mybci, "tune", lambda s, e: seen.update(s=s, e=e))
+    assert mybci.main(["4", "14", "tune"]) == 0
+    assert seen == {"s": 4, "e": 3}   # run 14 -> experiment 3

@@ -8,6 +8,23 @@ from tpv.pipeline import build_pipeline
 CLASSIFIERS = ("lda", "svm", "logreg", "rf")
 
 
+def tune(subject: int, experiment: int, grid=None):
+    """Opt-in hyperparameter tuning via GridSearchCV over the whole pipeline (no leakage:
+    CSP is refit inside each inner fold). Returns (best_params_, best_score_) and prints them.
+    Demo-only — run_all stays on fixed config.N_COMPONENTS."""
+    from sklearn.model_selection import GridSearchCV, StratifiedKFold
+
+    if grid is None:
+        grid = {"csp__n_components": [4, 6, 8]}
+    X, y = preprocessing.build_dataset(subject, experiment)
+    pipe = build_pipeline(csp="scratch", clf="lda")
+    inner = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)  # fixed for a stable demo
+    search = GridSearchCV(pipe, grid, cv=inner, scoring="accuracy")
+    search.fit(X, y)
+    print(f"best params: {search.best_params_}   best score: {search.best_score_:.4f}")
+    return search.best_params_, search.best_score_
+
+
 def cross_val_accuracy(subject: int, experiment: int, csp="scratch", clf="lda") -> float:
     seed = config.get_seed()
     X, y = preprocessing.build_dataset(subject, experiment)

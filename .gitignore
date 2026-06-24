@@ -1,4 +1,5 @@
 .venv/
+.venv-bonus/
 __pycache__/
 *.pyc
 mne_data/

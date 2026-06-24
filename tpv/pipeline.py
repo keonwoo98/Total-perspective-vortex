@@ -10,6 +10,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
 
 from tpv.csp import MyCSP
+from tpv.own_lda import OwnLDA
 
 
 def _make_classifier(clf: str, seed):
@@ -21,6 +22,8 @@ def _make_classifier(clf: str, seed):
         return LogisticRegression(max_iter=1000, random_state=seed)
     if clf == "rf":
         return RandomForestClassifier(n_estimators=200, random_state=seed)
+    if clf == "own-lda":
+        return OwnLDA()
     raise ValueError(f"unknown classifier: {clf}")
 
 
@@ -34,6 +37,9 @@ def _make_csp(csp: str, n_components: int, reg: float):
         # do NOT relax the tolerance (spec section 4.6).
         return MneCSP(n_components=n_components, reg=None, log=True,
                       norm_trace=True, cov_est="epoch")
+    if csp == "fbcsp":
+        from tpv.fbcsp import FilterBankCSP
+        return FilterBankCSP(n_components=2, reg=reg)
     raise ValueError(f"unknown csp: {csp}")
 
 
