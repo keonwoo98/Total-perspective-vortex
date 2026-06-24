@@ -21,6 +21,12 @@ Run all commands from the repository root.
 `<run>` maps to an experiment: 3/7/11->exp0, 4/8/12->exp1, 5/9/13->exp2, 6/10/14->exp3.
 Experiments 4/5 (real vs imagined) are evaluated only by the no-argument full run.
 
+Visualize the preprocessing (raw vs 7-30 Hz filtered signal + PSD):
+```bash
+.venv/bin/python scripts/visualize.py        # subject 1
+.venv/bin/python scripts/visualize.py 4 14   # subject 4, run 14
+```
+
 ## The 6 experiments
 | Exp | Runs | Task |
 |-----|------|------|
