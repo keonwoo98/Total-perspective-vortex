@@ -11,9 +11,12 @@ def load_raw(subject: int, runs: list[int]) -> mne.io.BaseRaw:
 
     Returns a single concatenated Raw with EEG channels and T0/T1/T2 annotations.
     """
-    # Pass subject/runs POSITIONALLY: the first param was renamed subject->subjects in
-    # MNE 1.9, so positional works across the pinned 1.6-1.12 range (keyword would break <1.9).
-    paths = eegbci.load_data(subject, runs, path=None, update_path=True)
+    # Download into the project-local mne_data/ (config.DATA_DIR) instead of ~/mne_data,
+    # so the data travels with the project folder. update_path=False keeps MNE's global
+    # config untouched. Pass subject/runs POSITIONALLY: the first param was renamed
+    # subject->subjects in MNE 1.9, so positional works across the pinned 1.6-1.12 range.
+    config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    paths = eegbci.load_data(subject, runs, path=str(config.DATA_DIR), update_path=False)
     raws = []
     for p in paths:
         r = mne.io.read_raw_edf(p, preload=True, verbose="ERROR")

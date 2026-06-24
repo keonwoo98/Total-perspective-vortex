@@ -11,6 +11,10 @@ N_CHANNELS = 64
 N_SUBJECTS = 109
 MODELS_DIR = Path("models")
 
+# Project-local EEG cache (anchored to the repo root, so it travels with the
+# project folder). gitignored. Override default ~/mne_data location.
+DATA_DIR = Path(__file__).resolve().parent.parent / "mne_data"
+
 # Each experiment is a list of two class-specs.
 # A class-spec selects epochs by (runs, annotations) and assigns a binary label.
 # exp0-3: T1 vs T2 within one run-group. exp4/5: real vs imagined, pooling T1+T2.
