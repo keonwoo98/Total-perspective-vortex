@@ -80,3 +80,28 @@ python mybci.py                            # subject-spec form (prints the 6 mea
 `TPV_SEED=42 python mybci.py 4 14 train` for a deterministic run; unset = different splits each
 time (per the subject's "different splits each time"). The >= 60% bar applies to the full-run
 grand mean, not to a single `train` call.
+
+## Bonus (all opt-in — the mandatory path above is unchanged)
+
+Five extra features, none of which alter the default `train` / `predict` / `run_all` behavior:
+
+| Bonus | How to use | Eval box |
+|---|---|---|
+| **A. From-scratch eigensolver** | `MyCSP(solver="jacobi")` — pure-numpy cyclic Jacobi + whitening (matches scipy `eigh` to ~1e-14) | Implementations |
+| **C. Hyperparameter tuning** | `python mybci.py <subject> <run> tune` — leakage-free GridSearchCV over `n_components` | Implementations |
+| **D. From-scratch classifier** | `build_pipeline(clf="own-lda")` — numpy `OwnLDA` | Implementations |
+| **F. Filter-Bank CSP** | `build_pipeline(csp="fbcsp")` — 4 sub-band CSP features | Feature engineering |
+| **G. Second dataset** | `tpv.external.load_external()` — BCI Competition IV-2a via moabb (optional dep) | Datasets |
+
+Demo all five on one subject:
+```bash
+python scripts/bonus_demo.py        # subject 1 (item G prints an install hint unless moabb is present)
+```
+
+The second dataset (G) needs the optional `moabb` dependency, installed in a **separate venv** so it
+never perturbs the verified mandatory pipeline:
+```bash
+python3.12 -m venv .venv-bonus
+.venv-bonus/bin/pip install -r requirements.txt -r requirements-bonus.txt
+.venv-bonus/bin/python scripts/bonus_demo.py     # now item G runs too
+```
