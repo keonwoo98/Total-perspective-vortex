@@ -6,13 +6,15 @@ No SVD, no library CSP. See spec section 4.
 import numpy as np
 from scipy.linalg import eigh
 from sklearn.base import BaseEstimator, TransformerMixin
+from tpv.jacobi import generalized_eigh
 
 
 class MyCSP(TransformerMixin, BaseEstimator):
-    def __init__(self, n_components: int = 4, reg: float = 0.01):
+    def __init__(self, n_components: int = 4, reg: float = 0.01, solver: str = "eigh"):
         # Store hyperparameters only (sklearn clone/set_params contract).
         self.n_components = n_components
         self.reg = reg
+        self.solver = solver
 
     def _class_cov(self, epochs: np.ndarray) -> np.ndarray:
         """Mean trace-normalized, symmetrized, shrinkage-regularized covariance."""
@@ -50,7 +52,10 @@ class MyCSP(TransformerMixin, BaseEstimator):
         # pinv; the decomposition is numerically correct, so silence the noise.
         with np.errstate(divide="ignore", over="ignore", invalid="ignore"):
             # Generalized eigenproblem: C1 w = lambda (C1+C2) w. eigh -> ascending eigenvalues.
-            eigvals, eigvecs = eigh(c1, c1 + c2)
+            if self.solver == "eigh":
+                eigvals, eigvecs = eigh(c1, c1 + c2)
+            else:
+                eigvals, eigvecs = generalized_eigh(c1, c1 + c2)
             order = np.argsort(np.abs(eigvals - 0.5))[::-1]  # most discriminative first
             eigvals = eigvals[order]
             eigvecs = eigvecs[:, order]
