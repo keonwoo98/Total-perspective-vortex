@@ -10,6 +10,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
 
 from tpv.csp import MyCSP
+from tpv.own_lda import OwnLDA
 
 
 def _make_classifier(clf: str, seed):
@@ -21,6 +22,8 @@ def _make_classifier(clf: str, seed):
         return LogisticRegression(max_iter=1000, random_state=seed)
     if clf == "rf":
         return RandomForestClassifier(n_estimators=200, random_state=seed)
+    if clf == "own-lda":
+        return OwnLDA()
     raise ValueError(f"unknown classifier: {clf}")
 
 
