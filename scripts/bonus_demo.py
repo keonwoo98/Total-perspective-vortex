@@ -54,7 +54,7 @@ def main():
         Xe, ye = load_external(1)
         print(f"[G] 2nd dataset BCI IV-2a (subj 1)   : {_acc(build_pipeline(), Xe, ye):.4f}")
     except ImportError:
-        print("[G] 2nd dataset: install requirements-bonus.txt (moabb) in a separate venv to run")
+        print("[G] 2nd dataset: install moabb via `pip install -r requirements.txt` to run")
     return 0
 
 
