@@ -4,6 +4,9 @@ EEG brain-computer interface (BCI) that infers which movement a subject performs
 (e.g. left vs right hand) from PhysioNet EEG, using a **from-scratch CSP** dimensionality-reduction
 transformer inside a scikit-learn pipeline.
 
+> 📖 **Full study & defense guide (concepts, math, code, evaluation — beginner-friendly):
+> [`docs/defense-guide.md`](docs/defense-guide.md)**
+
 ## Setup
 ```bash
 python3.12 -m venv .venv
@@ -12,6 +15,10 @@ pip install -r requirements.txt
 ```
 The PhysioNet `eegmmidb` dataset (~3.1 GB) auto-downloads into the **project-local `mne_data/`**
 folder on first run (gitignored — never committed). Run every command from the repository root.
+
+> `requirements.txt` holds version *ranges* (what to install). `requirements.lock.txt` is the exact
+> `pip freeze` of the verified environment — install from it only if you need to reproduce the precise
+> versions that produced the 0.658 result.
 
 ## Evaluation walkthrough (run in this order)
 ```bash
@@ -44,7 +51,7 @@ python mybci.py                            # subject-spec form (prints the 6 mea
 ```
 
 ## Usage details
-- `python mybci.py <subject 1-109> <run 3-14> <train|predict>`
+- `python mybci.py <subject 1-109> <run 3-14> <train|predict>` (plus a bonus `tune` mode)
 - `<run>` selects an experiment: `3/7/11`→exp0, `4/8/12`→exp1, `5/9/13`→exp2, `6/10/14`→exp3.
   (e.g. `4 14` = subject 4, run 14 → exp3 = imagery hands vs feet.)
 - Experiments 4/5 (real vs imagined) are evaluated only by `python mybci.py` / `validate_60.py`.
