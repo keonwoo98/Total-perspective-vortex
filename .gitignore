@@ -8,3 +8,7 @@ models/
 .DS_Store
 .pytest_cache/
 docs/superpowers/specs/*.bak
+
+# Subject PDFs (kept locally, never committed)
+Intra Projects total-perspective-vortex Edit.pdf
+Total perspective vortex.pdf
