@@ -189,11 +189,11 @@ Accuracy: 0.6667
 > *"Implementation was integrated to sklearn pipeline, inheriting from the baseEstimator and transformerMixin classes of sklearn."*
 
 **📚 Concept — what you need to know:**
-- **sklearn** = a toolbox of standard parts + a standard wiring spec; **Pipeline** = an assembly line (CSP stage → LDA stage).
-- **Inheritance** = a child class gets a parent's abilities for free. `class MyCSP(TransformerMixin, BaseEstimator)` inherits two contracts:
-  - **BaseEstimator** → `get_params`/`set_params` → sklearn can **clone, tune, inspect** it.
-  - **TransformerMixin** → `fit_transform` for free → it's a recognized **transformer** (`fit`/`transform`).
-- This is what lets `cross_val_score` **clone + refit it per fold** — i.e. the basis of leakage-free scoring, not a formality.
+- **What sklearn is.** scikit-learn is Python's standard machine-learning library. It gives you (a) ready-made **parts** (classifiers like LDA, data splitters, transformers) and (b) **tools** that drive them (`Pipeline`, `cross_val_score`, `GridSearchCV`). The key idea: every part follows the **same interface ("contract")**, so one tool can operate any part the same way. `Pipeline` = an assembly line that chains parts (CSP stage → LDA stage); each stage only has to honor that contract.
+- **Inheritance = getting a parent's abilities for free.** `class MyCSP(TransformerMixin, BaseEstimator)` makes MyCSP a *child* of those two classes, so it automatically gains their methods without rewriting them. Those two parents *are* the sklearn contract:
+  - **BaseEstimator** — the base class every sklearn estimator inherits. It provides **`get_params()` / `set_params()`**: a standard way to read and re-set a part's hyperparameters (here `n_components`, `reg`, `solver`). This is the "ID card" that lets sklearn **clone** it (make a fresh, unfitted copy), **tune** it (GridSearchCV sweeps params via `set_params`), and **inspect** it.
+  - **TransformerMixin** — a small add-on class (a "**mixin**" = grants one capability). It gives the **transformer** role: once you write `fit` and `transform`, it hands you **`fit_transform`** for free and marks the class as something that *reshapes* data (input → output), e.g. CSP's 64×321 → 4. (A classifier would use `ClassifierMixin` + `predict` instead.)
+- **Why it matters (not a formality).** Because MyCSP honors this contract, `cross_val_score` can **`clone` it and re-`fit` it on each fold's training data only** — which is exactly what prevents leakage. So the inheritance is the foundation of honest scoring, not bureaucracy.
 
 **🗣️ Say:** "My CSP inherits `TransformerMixin` and `BaseEstimator`, so it has the `fit`/`transform` contract and drops straight into `Pipeline([('csp', MyCSP()), ('clf', LDA())])`. That inheritance is exactly what lets `cross_val_score` clone and refit it per fold — so it's the foundation of honest scoring."
 **🖥️ Show:** `isinstance(csp, BaseEstimator)=True`, `isinstance(csp, TransformerMixin)=True`, `get_params()={...}`, has `fit_transform`, `clone()` works, plugs into the Pipeline.
@@ -201,6 +201,8 @@ Accuracy: 0.6667
 **❓ Q&A**
 - *What is inheritance?* — A child class automatically gets the parent's methods (here, the sklearn contracts) without rewriting them.
 - *Why both base classes?* — BaseEstimator = parameter management (clone/tune/inspect); TransformerMixin = transformer contract. Both → a full sklearn component.
+- *What is a "mixin"?* — A small helper class that grants one capability through inheritance; `TransformerMixin` adds `fit_transform` and the transformer role on top of your own `fit`/`transform`.
+- *What is sklearn in one line?* — Python's standard ML library: ready-made parts + tools (Pipeline, cross_val_score), all sharing one interface so any tool can drive any part.
 - *What does `clone` do, and why does CV need it?* — It copies an unfitted estimator from its params; `cross_val_score` clones the pipeline each fold and refits on training data only (no leakage).
 - *Why does `__init__` do no computation?* — sklearn contract: store hyperparameters only; learning happens in `fit`, else `clone` breaks.
 - *Transformer vs classifier?* — A transformer (`fit`/`transform`) reshapes data (CSP: 64×321→4); a classifier (`fit`/`predict`) outputs a label (LDA).

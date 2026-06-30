@@ -194,11 +194,11 @@ Accuracy: 0.6667
 > (번역) 구현이 sklearn 파이프라인에 통합되고 BaseEstimator·TransformerMixin을 상속.
 
 **📚 알아야 할 개념:**
-- **sklearn** = 표준 부품 + 표준 배선 규격의 도구상자; **Pipeline** = 조립 라인(CSP 칸 → LDA 칸).
-- **상속** = 자식 클래스가 부모 능력을 공짜로 물려받음. `class MyCSP(TransformerMixin, BaseEstimator)`가 두 규약을 상속:
-  - **BaseEstimator** → `get_params`/`set_params` → **복제(clone)·튜닝·검사** 가능.
-  - **TransformerMixin** → `fit_transform` 공짜 → 인정받는 **변환기**(`fit`/`transform`).
-- 이게 `cross_val_score`가 **fold마다 복제·재학습**하게 해줌 — 누수 없는 채점의 토대지 형식이 아님.
+- **sklearn이 뭔가.** scikit-learn은 파이썬의 표준 머신러닝 라이브러리. (a) 완성 **부품**(LDA 같은 분류기, 데이터 분할기, 변환기)과 (b) 그걸 굴리는 **도구**(`Pipeline`, `cross_val_score`, `GridSearchCV`)를 줘요. 핵심은 모든 부품이 **같은 인터페이스("규약")**를 따라서, 한 도구가 어떤 부품이든 똑같이 다룰 수 있다는 것. `Pipeline` = 부품을 잇는 조립 라인(CSP 칸 → LDA 칸); 각 칸은 그 규약만 지키면 됨.
+- **상속 = 부모 능력을 공짜로 물려받기.** `class MyCSP(TransformerMixin, BaseEstimator)`는 MyCSP를 그 두 클래스의 *자식*으로 만들어, 그들 메서드를 안 다시 짜고 자동으로 얻어요. 그 두 부모가 곧 sklearn 규약:
+  - **BaseEstimator** — 모든 sklearn 추정기가 상속하는 기반 클래스. **`get_params()` / `set_params()`** 제공: 부품의 하이퍼파라미터(여기선 `n_components`, `reg`, `solver`)를 표준 방식으로 읽고 다시 설정. 이게 sklearn이 **복제(clone, 학습 안 된 새 복사본)·튜닝(GridSearchCV가 set_params로 파라미터 훑기)·검사**를 하게 하는 "신분증".
+  - **TransformerMixin** — 한 가지 능력을 주는 작은 부가 클래스("**mixin**"). **변환기** 역할을 줘요: `fit`과 `transform`만 쓰면 **`fit_transform`**을 공짜로 주고, 이 클래스가 데이터를 *바꾸는*(입력 → 출력, 예: CSP 64×321 → 4) 부품임을 표시. (분류기라면 `ClassifierMixin` + `predict`를 씀.)
+- **왜 중요(형식이 아님).** MyCSP가 이 규약을 지키므로 `cross_val_score`가 **fold마다 `clone`해서 학습분으로만 다시 `fit`** 가능 — 이게 바로 누수를 막아요. 즉 이 상속은 정직한 채점의 토대지 요식이 아님.
 
 **🗣️ 할 말:** "제 CSP가 `TransformerMixin`·`BaseEstimator`를 상속해 `fit`/`transform` 규약을 갖춰 `Pipeline([('csp', MyCSP()), ('clf', LDA())])`에 바로 들어갑니다. 그 상속이 `cross_val_score`가 fold마다 복제·재학습하게 하는, 정직한 채점의 토대예요."
 **🖥️ 시연:** `isinstance(csp, BaseEstimator)=True`, `isinstance(csp, TransformerMixin)=True`, `get_params()={...}`, `fit_transform` 있음, `clone()` 동작, Pipeline에 꽂힘.
@@ -206,6 +206,8 @@ Accuracy: 0.6667
 **❓ Q&A**
 - *상속이 뭔가?* — 자식이 부모 메서드(여기선 sklearn 규약)를 안 다시 짜고 물려받음.
 - *왜 두 base class 다?* — BaseEstimator=파라미터 관리(복제/튜닝/검사), TransformerMixin=변환기 규약. 둘 다라야 온전한 부품.
+- *"mixin"이 뭔가?* — 상속으로 한 가지 능력만 더해주는 작은 도우미 클래스; `TransformerMixin`은 내 `fit`/`transform` 위에 `fit_transform`과 변환기 역할을 얹어줌.
+- *sklearn을 한 줄로?* — 파이썬 표준 ML 라이브러리: 완성 부품 + 도구(Pipeline, cross_val_score)가 모두 한 인터페이스를 공유해 어떤 도구든 어떤 부품이든 굴림.
 - *`clone`이 뭐고 왜 CV에 필요?* — 학습 안 된 추정기를 파라미터로 복사; `cross_val_score`가 fold마다 파이프라인을 clone해 학습분으로만 재학습(누수 없음).
 - *왜 `__init__`에서 계산 안 함?* — sklearn 규약: 하이퍼파라미터 저장만, 학습은 `fit`; 아니면 `clone`이 깨짐.
 - *변환기 vs 분류기?* — 변환기(`fit`/`transform`)는 데이터를 바꿈(CSP: 64×321→4); 분류기(`fit`/`predict`)는 라벨을 냄(LDA).
