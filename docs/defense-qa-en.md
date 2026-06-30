@@ -216,12 +216,19 @@ Accuracy: 0.6667
 **📋 Criterion (verbatim, evaluation sheet):**
 > *"A dimensionality reduction algorithm is implemented, the subject talks about PCA and CSP but other algorithms performing a dimensionnality reduction are feasible. Check that the student has a general understanding of the algorithm. It is allowed to use functions from libs like numpy or scipy for some tasks : the eigenvalues decomposition, singular values decompositon and covariance matrix estimation."*
 
-**📚 Concept — CSP in 3 steps (the from-scratch core, `csp.py`):**
-Goal: turn one trial (64 × 321 ≈ 20k numbers) into **4 numbers** that separate the two classes.
-1. **Why reduce.** The answer is only in oscillation *size*, and ~45 trials can't fit a boundary in 20k-D (overfitting). 4 numbers make a clean boundary possible.
-2. **How it mixes — a "recipe" and `@`.** A **spatial filter** = 64 weights. Matrix-multiply `@` = "multiply-and-sum": `filters @ E` blends 64 channels into one **virtual channel**. Two reductions: `64×321 →(@)→ 4×321 →(variance per row)→ 4 numbers` (fewer channels, then time collapses to size). Recipe #1's top weights land on right-motor channels — CSP built a "right-motor detector".
-3. **How filters are chosen — covariance + eigendecomposition.** Build per-class covariances **C1, C2** (64×64, "how channels co-oscillate"). Solve the **generalized eigenproblem `eigh(C1, C1+C2)`**: directions `w` maximizing `wᵀC1w / wᵀ(C1+C2)w`, each with eigenvalue **λ = a/(a+b)** = the fraction of that filter's oscillation belonging to class-1. λ→1/0 = class detector, **λ=0.5 = useless**. Keep the **4 filters with λ farthest from 0.5**.
-4. **Feature = log-variance**: per virtual channel, variance → normalize → log. (Log de-skews + linearizes; measured 0.896 vs 0.884.)
+**📚 Concept — built up from scratch (the core of the project, `csp.py`):**
+
+*Start with the problem:*
+- **Why one trial has ~20,000 numbers.** A trial is **64 channels × 321 time samples = 20,544 numbers** (64 microphones, each read 321 times over the 2 seconds). That count is the "dimension".
+- **Why we must shrink it = dimensionality reduction.** With only ~45 trials per subject, 20,544 numbers is *far* too many to learn from — a classifier would just **memorize** (overfit), not generalize. And we don't need them all: from ERD we know the answer is in **how big the oscillation is**, not in every raw value. **Dimensionality reduction** = squeezing those ~20k numbers into a few that keep the discriminative info — here, **4**.
+- **What CSP is.** **CSP (Common Spatial Patterns)** is the reducer I implement: it finds the best **combinations of channels** that make the two classes differ most in oscillation size.
+
+*How 20,544 → 4 actually happens — two cuts:*
+- **Cut 1 — mix 64 channels into 4 (channels 64 → 4).** A **spatial filter ("recipe")** = 64 weights, one per channel. Applying it (matrix-multiply `@` = "multiply-and-sum") blends all 64 channels into **one new "virtual channel"** — like a DJ mixing 64 tracks into one with volume knobs. With 4 recipes: `64×321 →(@)→ 4×321`. (Recipe #1's biggest weights land on right-motor channels — it became a "right-motor detector".)
+- **Cut 2 — collapse time into one size each (time 321 → 1).** For each virtual channel take its **variance** (= how big its oscillation is) → one number, then **log** it. So `4×321 → 4`. **Total: 20,544 → 4.**
+
+*Why those 4 recipes (the smart part):*
+- We don't pick recipes at random — we pick the ones that make the two classes differ **most** in oscillation size. Build each class's **covariance** (a 64×64 table of how its channels co-oscillate), then the **generalized eigendecomposition `eigh(C1, C1+C2)`** returns recipes ranked by a score **λ = a/(a+b)** (the fraction of a recipe's oscillation that belongs to class 1). **λ near 1 or 0 = a great detector; λ = 0.5 = useless.** Keep the **4 recipes with λ farthest from 0.5**. (numpy/scipy are allowed for the covariance + eigendecomposition — everything else is from scratch.)
 
 **📚 What the 4 numbers feed:** they go into the **LDA classifier** (a boundary drawn between the two classes; detailed as a from-scratch bonus, item 2.11-D). LDA is *not* dimensionality reduction — this item is only about the reducer (CSP).
 
