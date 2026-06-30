@@ -81,19 +81,18 @@ Then give the 60-second pitch above.
 > *"Its nice to filter a signal, but it needs to mean something in the context of your data. Check that the significative frequencies for a motor imagery task are kept (~8-40Hz). If the program learns to select the relevant frequencies for classification its better, cf bonus questions."*
 
 **📚 Concept — what you need to know:**
-- A **feature** is a compact, discriminative number fed to the classifier — not the raw signal.
-- The **meaningful band** for motor imagery is **mu (8–12) + beta (13–30 Hz)** — where ERD lives. Keeping an arbitrary band (e.g. 50–60 Hz) would retain a signal but be meaningless here.
-- Our features = **CSP log-variance**: 4 numbers per trial encoding the ERD power in the most discriminative spatial patterns (built in item 2.7).
+- This item asks only whether the filtering is **meaningful, not arbitrary** — does it keep the frequencies that actually carry motor-imagery information? (It is *not* about the CSP compression — that's scored under Implementation.)
+- For motor imagery those frequencies are **mu (8–12 Hz) + beta (13–30 Hz)** — the bands where ERD happens (see Preprocessing). Filtering to an arbitrary band (e.g. 50–60 Hz) would keep a clean-looking signal that carries *no* motor information — meaningless.
+- So our **7–30 Hz band-pass is the meaningful choice**: it preserves mu/beta and discards the rest.
 
-**🗣️ Say:** "The core check here is that I keep the band that *means something* — 7–30 Hz preserves mu and beta, exactly where the motor-imagery signal (ERD) lives, as the PSD showed. The compression of those 64×321 numbers into 4 discriminative features is the CSP, which I'll detail under Implementation; and 'learning which frequencies matter' is my FBCSP bonus."
-**🖥️ Show:** `FMIN = 7.0, FMAX = 30.0` (from `config.py`) + the filtered PSD.
+**🗣️ Say:** "This item checks whether my filtering *means something*, not just any filter. It does: I keep **7–30 Hz**, exactly the mu and beta bands where motor-imagery ERD lives. A filter that kept, say, 50–60 Hz would look clean but carry no motor information. The PSD already showed mu/beta preserved and the rest removed. (Learning which sub-frequencies matter is the FBCSP bonus.)"
+**🖥️ Show:** `FMIN = 7.0, FMAX = 30.0` (from `config.py`) + the filtered PSD showing mu/beta retained.
 
 **❓ Q&A**
-- *Why stop at 30, not 40?* — ERD strongest in 8–30 Hz; above 30 the noise-to-signal rises; 8–30 is standard and validated by 0.658.
-- *What features feed the classifier?* — Not the raw filtered signal (~20k numbers/trial), but **CSP log-variance** — 4 numbers = ERD power in discriminative patterns.
-- *Isn't the filtered signal already a feature?* — Filtering keeps the right *band*; a feature must also be compact and discriminative. CSP turns ~20k numbers into 4 meaningful ones.
-- *Why log-variance specifically?* — Variance = oscillation size (where ERD is); log de-skews toward Gaussian and turns multiplicative into additive differences — both help the linear classifier.
-- *Where does "learn relevant frequencies" come in?* — The FBCSP bonus (item 2.10) splits the band into sub-bands and lets the classifier weight them.
+- *Why is 7–30 Hz "meaningful" and not arbitrary?* — mu (8–12) and beta (13–30) are the rhythms that change with motor imagery (ERD); other bands don't carry that information.
+- *Why stop at 30, not the sheet's 40?* — ERD is strongest in 8–30 Hz; above 30 the noise rises. 8–30 is a standard BCI choice, validated by 0.658, and covers the requested core.
+- *What would a "meaningless" filter look like?* — Keeping a band with no motor information (e.g. the 50–60 Hz line-noise region), or not filtering at all.
+- *Where does "learn the relevant frequencies" come in?* — The FBCSP bonus (item 2.10) splits the band into sub-bands and lets the classifier weight which matter.
 
 → **Yes**
 
