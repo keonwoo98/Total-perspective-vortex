@@ -127,7 +127,8 @@ Each model is fit **per subject** — it answers "*which action*", not "which pe
 # 3. Evaluation sheet — item by item
 
 ## 3.1 Preprocessing — *"Watch it for the plot"*
-**📋 Criterion:** data is parsed and **visualized by a script showing raw vs filtered**, the filtered signal being **cleaner**.
+**📋 Criterion (verbatim, evaluation sheet):**
+> *"Check if the data were parsed then visualized with a script, showing raw and filtered data. The plots should look like what is shown in the video, the filtered signal being "cleaner"."*
 
 **🗣️ Say:** "One script shows the raw signal, the 7–30 Hz filtered signal, and the PSD (power per frequency), before and after."
 **🖥️ Show:** `python scripts/visualize.py 4 14` *(any subject/run works — offer to let the examiner pick a number to prove it's not cherry-picked).*
@@ -145,7 +146,8 @@ Each model is fit **per subject** — it answers "*which action*", not "which pe
 → **Yes**
 
 ## 3.2 Feature extraction
-**📋 Criterion:** the filtering must **mean something** — the **significant motor-imagery frequencies (~8–40 Hz) are kept**. (Learning to select relevant frequencies = bonus.)
+**📋 Criterion (verbatim, evaluation sheet):**
+> *"Its nice to filter a signal, but it needs to mean something in the context of your data. Check that the significative frequencies for a motor imagery task are kept (~8-40Hz). If the program learns to select the relevant frequencies for classification its better, cf bonus questions."*
 
 **🗣️ Say:** "The core check is that I keep the meaningful band. My pass-band is **7–30 Hz**, preserving mu (8–12) and beta (13–30) — the bands where ERD lives. Keeping an arbitrary band (say 50–60 Hz) would retain a signal but be meaningless for motor imagery; 7–30 Hz is meaningful *in the context of the data*."
 **🖥️ Show:** `FMIN = 7.0, FMAX = 30.0` (from `config.py`); plus the filtered PSD from 3.1.
@@ -158,7 +160,8 @@ Each model is fit **per subject** — it answers "*which action*", not "which pe
 → **Yes**
 
 ## 3.3 Train
-**📋 Criterion:** a **train mode**; **sklearn validation tools** used; the **training score displayed**.
+**📋 Criterion (verbatim, evaluation sheet):**
+> *"The program has a train mode, sklearn score validation tools are used. The score for the training is displayed."*
 
 **🗣️ Say:** "`train` mode runs `cross_val_score`, prints the score, then saves a model."
 **🖥️ Show:** `python mybci.py 4 14 train`
@@ -178,7 +181,8 @@ cross_val_score: 0.7333
 → **Yes**
 
 ## 3.4 Predict
-**📋 Criterion:** a **predict mode**, also using validation tools; the **prediction output is displayed** (class id suffices).
+**📋 Criterion (verbatim, evaluation sheet):**
+> *"There is a predict mode, which also uses validation tools. The prediction output is displayed (the id of the output class is enough)."*
 
 **🗣️ Say:** "`predict` loads the saved model and replays the held-out 20 % (9 trials) one at a time, comparing prediction to truth — no retraining."
 **🖥️ Show:** `python mybci.py 4 14 predict`
@@ -199,7 +203,8 @@ Accuracy: 0.6667
 → **Yes**
 
 ## 3.5 Realtime
-**📋 Criterion:** prediction made **as data is streamed**; result output **between 0 and 2 seconds** after the event.
+**📋 Criterion (verbatim, evaluation sheet):**
+> *"The prediction is made as the data is streamed to the processing pipeline. The program outputs the result between 0 and 2 seconds after the event was triggered."*
 
 **🗣️ Say:** "`predict` feeds the pipeline **one event (2-second epoch) at a time**, like a stream. Measured latency per event is ~0.1–0.5 **milliseconds**, and a `assert latency < 2.0` enforces the budget in code."
 **🖥️ Show:** per-event latency `0.0001–0.0005 s  OK (<2s)`.
@@ -214,7 +219,8 @@ Accuracy: 0.6667
 → **Yes**
 
 ## 3.6 Integration
-**📋 Criterion:** integrated into the **sklearn pipeline**, inheriting **`BaseEstimator`** and **`TransformerMixin`**.
+**📋 Criterion (verbatim, evaluation sheet):**
+> *"Implementation was integrated to sklearn pipeline, inheriting from the baseEstimator and transformerMixin classes of sklearn."*
 
 **🗣️ Say:** "`class MyCSP(TransformerMixin, BaseEstimator)` gives it the transformer contract (`fit`/`transform`), so it drops into `Pipeline([('csp', MyCSP()), ('clf', LDA())])`."
 **🖥️ Show:** `isinstance(csp, BaseEstimator)=True`, `isinstance(csp, TransformerMixin)=True`, `get_params()={...}`, has `fit_transform`, `clone()` works.
@@ -228,7 +234,8 @@ Accuracy: 0.6667
 → **Yes**
 
 ## 3.7 Implementation — dimensionality reduction (high-value)
-**📋 Criterion:** a **dimensionality-reduction algorithm is implemented** (PCA/CSP or other) and the student shows **general understanding**. numpy/scipy are allowed for eigendecomposition / SVD / covariance.
+**📋 Criterion (verbatim, evaluation sheet):**
+> *"A dimensionality reduction algorithm is implemented, the subject talks about PCA and CSP but other algorithms performing a dimensionnality reduction are feasible. Check that the student has a general understanding of the algorithm. It is allowed to use functions from libs like numpy or scipy for some tasks : the eigenvalues decomposition, singular values decompositon and covariance matrix estimation."*
 
 **🗣️ Say + 🖥️ Show:** "I implemented **CSP from scratch** in `csp.py`. Imports are only `numpy`, `scipy.linalg.eigh` (explicitly allowed), `sklearn.base`, and my own `generalized_eigh` — **no library CSP**."
 
@@ -254,7 +261,9 @@ Accuracy: 0.6667
 → **Yes**
 
 ## 3.8 Score (the 60 % gate)
-**📋 Criterion:** a script trains over **each subject**, averages **by experiment type** → the **mean of the six means ≥ 60 %**. Above 60 %, +1 point per 1 % (0–5).
+**📋 Criterion (verbatim, evaluation sheet):**
+> *"There has to be a script executing training over each subject and computing the mean of scores over each subjects, by type of experiment runs. The mean of the resulting six means (corresponding to the six types of experiment runs) has to be superior or equal to 60%."*
+> *(Rating)* *"Over 60% add a point for every 1%."* — *"Rate it from 0 (failed) through 5 (excellent)"*
 
 **🗣️ Say:** "`python mybci.py` (no args) cross-validates all 109 subjects × 6 experiments. For each experiment it averages over subjects (6 means), then averages those 6."
 **🖥️ Show:** `python scripts/validate_60.py` (run the **full** version at the defense; `--fast 5` is only a preview).
@@ -273,7 +282,8 @@ Mean accuracy of 6 experiments:  0.658
 → **Yes / 5/5**
 
 ## 3.9 Bonus · Datasets
-**📋 Criterion:** other datasets processed? scoring correct, accounting for noise/quality vs the subject dataset?
+**📋 Criterion (verbatim, evaluation sheet):**
+> *"Are there other datasets processed by the program ? Is the scoring on those datasets correct ? Try to assert this taking into account the noise and the general quality of the dataset compared to the one given in the subject."*
 
 **🗣️ Say:** "I added **BCI Competition IV-2a** via moabb — a structurally different dataset (**22 channels, 250 Hz, 288 trials**), yet my pipeline runs **unchanged**."
 **🖥️ Show:** `python scripts/bonus_demo.py` → `[G] 2nd dataset BCI IV-2a (subj 1) : 0.8552` (shape 288×22×1001).
@@ -287,7 +297,8 @@ Mean accuracy of 6 experiments:  0.658
 → **Yes**
 
 ## 3.10 Bonus · Feature engineering
-**📋 Criterion:** relevance of preprocessing and how data is fed; **Fourier/wavelet or any pre-processing transform is a plus**.
+**📋 Criterion (verbatim, evaluation sheet):**
+> *"Try to evaluate the relevance of the preprocessing stage and how are the data feeded to the algorithm. The use of fourier or wavelet transform, and anything that transform the data before the processing is a plus."*
 
 **🗣️ Say:** "Two layers of frequency transformation. (1) The mandatory **FIR band-pass** is already a frequency-domain transform. (2) The bonus **Filter-Bank CSP (FBCSP)** splits 7–30 Hz into **four sub-bands (8-12 / 12-16 / 16-20 / 20-30)** and runs a separate CSP per band → 8 features."
 **🗣️ Why split (depth):** "A single 7–30 Hz band lumps mu, low-beta and high-beta together, but **ERD strength and topography differ by frequency** — some subjects are mu-dominant, others beta-dominant. FBCSP learns a **separate spatial pattern per band** and lets the classifier weight which bands matter — a frequency-resolution that plain CSP lacks. It's in the Fourier/wavelet family of frequency-domain feature engineering."
@@ -302,7 +313,8 @@ Mean accuracy of 6 experiments:  0.658
 → **Yes**
 
 ## 3.11 Bonus · Implementations
-**📋 Criterion:** how deep — own **eigendecomposition / SVD / covariance**? a **complex** dimensionality reduction? **hyperparameter tuning/learning**? own **classifier**?
+**📋 Criterion (verbatim, evaluation sheet):**
+> *"How deep did the student dig into his implementation ? ( Did he implement his own eigenvalues decomposition, SVD, or covariance matrix estimation ? ) ( Did he implement a complex dimensionality reduction algorithm ? ) Is there some kind of hyperparameter tuning or learning ? Did he implement his own classifier ?"*
 
 ### A. From-scratch eigensolver (own eigendecomposition)
 **🗣️ Say:** "Even `eigh` is hand-written — a **pure-numpy cyclic Jacobi** solver in `jacobi.py`."
@@ -339,10 +351,16 @@ Enable with `build_pipeline(clf="own-lda")`.
 → **Yes**
 
 ## 3.12 Ratings
+**📋 Verbatim, evaluation sheet:**
+> *"Don't forget to check the flag corresponding to the defense"* — *"Ok"* / *"Outstanding project"*
+> Flags: *"Empty work / Incomplete work / Cheat / Crash / Forbidden function"*
+
 **🗣️ Say:** "None of the negative flags apply (Empty / Incomplete / Cheat / Crash / **Forbidden function**). In particular, the sheet explicitly allows numpy/scipy for eigendecomposition, SVD and covariance — and I implemented even those myself. Mandatory passes at 0.658 and all five bonuses are implemented and verified, so I'd argue **Outstanding project**."
 → **Outstanding**
 
 ## 3.13 Conclusion
+**📋 Verbatim, evaluation sheet:** *"Leave a comment on this evaluation ( 2048 chars max )"*
+
 The examiner writes the comment. Closing line to offer:
 > "PhysioNet's 64 channels are band-passed to 7–30 Hz to expose ERD, compressed by a **from-scratch CSP** into 4 numbers, classified by LDA, and scored with **leakage-free cross-validation** to a 109-subject × 6-experiment mean of **0.658 (≥ 60 %)**; all five bonuses — including a from-scratch eigensolver — are implemented."
 
