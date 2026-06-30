@@ -136,11 +136,18 @@ Each model is fit **per subject** — it answers "*which action*", not "which pe
 **👉 PSD:** "Before: power piled up at low frequencies plus a sharp **60 Hz line-noise spike**, content out to 80 Hz. After: only **7–30 Hz survives**, a steep drop past 30 Hz, and the 60 Hz spike is gone — that is the direct evidence of 'cleaner'."
 
 **❓ Q&A**
-- *Why 7–30 Hz?* — Motor-imagery mu/beta rhythms (ERD) live there; the sheet itself asks for ~8–40 Hz.
-- *What filter type?* — A **FIR** designed with **firwin**; **zero-phase**, so it doesn't shift event timing.
-- *Why does the filtered cutoff slope instead of dropping vertically?* — A finite FIR has a steep but finite transition band; frequencies just outside 7/30 Hz are attenuated progressively, not zeroed.
-- *Why average reference?* — Removes activity common to all electrodes (reference choice, global noise), isolating each channel's local activity.
-- *Which video?* — The subject and submission contain no video; the operative requirement is "filtered is cleaner", which the PSD demonstrates unambiguously.
+- *What are the two kinds of plot, and why both?* — The same signal shown two ways. The **time series** (amplitude vs time) lets you *see* it get smoother; the **PSD** (power vs frequency) *proves* exactly which frequencies survived. Filtering is one process; these are two views of its result.
+- *What did the filter actually do?* — The raw signal mixes frequencies from ~0 to 80 Hz (80 = half the 160 Hz sampling rate, the Nyquist limit). The band-pass **keeps 7–30 Hz and pushes everything below 7 and above 30 down to near-zero.**
+- *Figures before/after both span 0–80 Hz but look different — why?* — Same x-axis on purpose; only the **content** differs (before vs after the filter). Showing the full 0–80 range is what lets you see that the out-of-band power was removed.
+- *What is the PSD's y-axis?* — Power — how strong each frequency is — in **dB** (a log scale). Higher = that frequency is stronger; the x-axis is frequency (Hz).
+- *Why are some dB values negative?* — dB is **relative to a reference (1 µV², the `re 1 µV²` in the axis label)**, like floor numbers relative to a lobby. Negative just means "weaker than the reference", not negative power. Log scale lets very strong and very weak frequencies share one plot.
+- *Why 7–30 Hz specifically?* — Motor-imagery **mu (8–12) / beta (13–30)** rhythms (ERD) live there; the sheet asks for ~8–40 Hz. Below 7 Hz = slow drift; above 30 Hz = muscle/line noise.
+- *What filter type?* — A **FIR** designed with **firwin**; **zero-phase**, so it doesn't shift event timing. The cutoff is a steep slope, not a vertical cliff (finite FIR).
+- *What exactly is "average reference"?* — At each time point, subtract the **mean of all 64 channels** from every channel, removing whatever is common to all electrodes (EEG voltage is always measured relative to some reference).
+- *Doesn't that average include each channel's own signal?* — It does, but the **common part survives averaging while the unique parts (different signs) largely cancel**, so the average is mostly the common signal. Subtracting it removes the common noise and costs each channel only ~1/64 (~1.5 %) of its own signal — a great trade, and better with more channels.
+- *Two different "references" — don't confuse them:* the **average reference** changes the signal (real preprocessing, `preprocessing.py`); the **1 µV² reference** is only the dB yardstick on the PSD plot (MNE's display convention, drawn in `viz.py`, not our preprocessing).
+- *Where is the PSD computed?* — Not in `preprocessing.py`; `viz.py` calls MNE's `compute_psd(method="welch").plot()`. The PSD/dB is a visualization, **not** fed to the model — the pipeline uses the filtered *time series* → epochs → CSP.
+- *Which video?* — The subject and submission contain no video; the operative requirement is "filtered is cleaner", which the PSD shows unambiguously.
 - *What are the shaded colors?* — MNE auto-assigns them; here blue=T0, orange=T1, green=T2 (read the legend, the colors carry no meaning).
 
 → **Yes**
