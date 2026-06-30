@@ -45,11 +45,9 @@ Then give the 60-second pitch above.
 > *"Check if the data were parsed then visualized with a script, showing raw and filtered data. The plots should look like what is shown in the video, the filtered signal being "cleaner"."*
 
 **📚 Concept — what you need to know:**
-- **EEG = 64 microphones on the scalp.** 64 electrodes each sample voltage **160 times per second**, in **microvolts (µV)**. One recording is a `(64, 20000)` table (~125 s × 160 Hz).
-- **Channel names = scalp positions.** `C` = central/**motor strip**; odd = left, even = right. So **C3** (left motor) ↔ right hand, **C4** (right motor) ↔ left hand — the brain controls the **contralateral** side.
-- **ERD — why this is possible.** A *resting* motor region oscillates strongly at 8–30 Hz (neurons fire in sync, like a stadium clap). *Using* it (move/imagine) **desynchronizes** → the oscillation **shrinks** = **ERD (Event-Related Desynchronization)**, on the **opposite** side (right hand → C3 quiets). Measured (20-subj mean, µV²): left hand C3 83.1 / C4 **78.7**; right hand C3 **82.2** / C4 89.3 — real but subtle. **The answer is in the oscillation's *size* (variance), not the raw waveform.**
-- **The filter (the actual preprocessing).** ① **Average reference**: at each instant subtract the **mean of all 64 channels**, removing what's common to all electrodes. ② **7–30 Hz band-pass (FIR, firwin, zero-phase)**: keeps mu (8–12) + beta (13–30) where ERD lives; drops slow drift (<7 Hz) and muscle/line noise (>30 Hz). We filter the long signal first, then epoch.
-- **Epoching.** The data ships with annotations **T0 (rest), T1/T2 (the two actions)**. We drop rest and cut a **2-second window** at each T1/T2 → one trial = `(64 × 321)`, where **321 = 2 s × 160 + 1** (endpoints both counted). One subject·experiment ≈ **45 trials**.
+- **EEG = 64 microphones on the scalp.** 64 electrodes sample voltage **160×/s** in **µV** → a `(64, 20000)` table per ~125 s recording. The plot shows this signal **before vs after filtering**.
+- **The filter (this is what the plot is about).** ① **Average reference**: at each instant subtract the **mean of all 64 channels** (removes what's common to all electrodes). ② **7–30 Hz band-pass (FIR, firwin, zero-phase)**: keep the motor-imagery band, drop slow drift (<7 Hz) and muscle/line noise (>30 Hz). *Why 7–30 Hz is the meaningful band → Feature extraction.* We filter the long continuous signal first, then epoch.
+- **Then epoching (formatting — not shown in this plot).** Annotations mark **T0 (rest), T1/T2 (the two actions)**; we drop rest and cut a **2-second window** at each T1/T2 → one trial `(64 × 321)` (321 = 2 s × 160 + 1; ~45 trials/subject). The raw-vs-filtered plot shows the **continuous** signal, not epochs.
 
 **🗣️ Say:** "Let me start with preprocessing — this is where the raw recording becomes usable. One script loads a subject's EEG and shows it in **two complementary views, each before and after filtering**: first the **time series** (raw wavy signal vs the 7–30 Hz filtered one) so you see the cleanup with your eyes, then the **PSD (power spectral density)** — an equalizer-style view of how much energy sits at each frequency. The two views make the same point from different angles: the filtered signal is genuinely *cleaner*, because I strip the slow drift and line noise and keep only the motor band (mu/beta) that carries the answer."
 **🖥️ Show:** `python scripts/visualize.py 4 14` *(any subject/run works — offer to let the examiner pick a number).*
@@ -81,9 +79,9 @@ Then give the 60-second pitch above.
 > *"Its nice to filter a signal, but it needs to mean something in the context of your data. Check that the significative frequencies for a motor imagery task are kept (~8-40Hz). If the program learns to select the relevant frequencies for classification its better, cf bonus questions."*
 
 **📚 Concept — what you need to know:**
-- This item asks only whether the filtering is **meaningful, not arbitrary** — does it keep the frequencies that actually carry motor-imagery information? (It is *not* about the CSP compression — that's scored under Implementation.)
-- For motor imagery those frequencies are **mu (8–12 Hz) + beta (13–30 Hz)** — the bands where ERD happens (see Preprocessing). Filtering to an arbitrary band (e.g. 50–60 Hz) would keep a clean-looking signal that carries *no* motor information — meaningless.
-- So our **7–30 Hz band-pass is the meaningful choice**: it preserves mu/beta and discards the rest.
+- This item asks only whether the filtering is **meaningful, not arbitrary** — does it keep the frequencies that actually carry motor-imagery information? (Not about the CSP compression — that's Implementation.)
+- **Why mu/beta (7–30 Hz) is the meaningful band:** the motor cortex has two characteristic rhythms — **mu (8–12 Hz)**, its idle "hum" at rest, and **beta (13–30 Hz)**, its active-control rhythm — both produced by neurons firing *in sync*. The instant you **move or imagine** moving a limb, that region gets busy, the synchrony breaks, and the mu/beta oscillation **shrinks** (= **ERD**), **contralaterally** (right hand → drop over the left motor cortex, C3). So the *size* of the mu/beta rhythm is a direct readout of "is this motor area engaged, and which side?" — exactly the information we classify.
+- **Why nothing else:** below 7 Hz is slow drift / eye movement; above 30 Hz is muscle and 50/60 Hz line noise — neither carries motor-imagery information. The signal is concentrated in 8–30 Hz, so **7–30 Hz keeps it and drops the rest** — that's what makes the filtering meaningful.
 
 **🗣️ Say:** "This item checks whether my filtering *means something*, not just any filter. It does: I keep **7–30 Hz**, exactly the mu and beta bands where motor-imagery ERD lives. A filter that kept, say, 50–60 Hz would look clean but carry no motor information. The PSD already showed mu/beta preserved and the rest removed. (Learning which sub-frequencies matter is the FBCSP bonus.)"
 **🖥️ Show:** `FMIN = 7.0, FMAX = 30.0` (from `config.py`) + the filtered PSD showing mu/beta retained.
@@ -223,7 +221,7 @@ Goal: turn one trial (64 × 321 ≈ 20k numbers) into **4 numbers** that separat
 3. **How filters are chosen — covariance + eigendecomposition.** Build per-class covariances **C1, C2** (64×64, "how channels co-oscillate"). Solve the **generalized eigenproblem `eigh(C1, C1+C2)`**: directions `w` maximizing `wᵀC1w / wᵀ(C1+C2)w`, each with eigenvalue **λ = a/(a+b)** = the fraction of that filter's oscillation belonging to class-1. λ→1/0 = class detector, **λ=0.5 = useless**. Keep the **4 filters with λ farthest from 0.5**.
 4. **Feature = log-variance**: per virtual channel, variance → normalize → log. (Log de-skews + linearizes; measured 0.896 vs 0.884.)
 
-**📚 Concept — LDA (the classifier the 4 numbers feed):** the 4 numbers are a point in 4-D; two class clouds. **`w = Σ⁻¹(μ1 − μ0)`** = the center-to-center direction corrected by the spread `Σ`; decision = sign of **`w·x + b`**. (LDA itself is a from-scratch bonus, item 2.11-D.)
+**📚 What the 4 numbers feed:** they go into the **LDA classifier** (a boundary drawn between the two classes; detailed as a from-scratch bonus, item 2.11-D). LDA is *not* dimensionality reduction — this item is only about the reducer (CSP).
 
 **🗣️ Say:** "I implemented **CSP from scratch** in `csp.py` — imports are only numpy, `scipy.linalg.eigh` (explicitly allowed), `sklearn.base`, and my own `generalized_eigh`; no library CSP. The algorithm, in four steps: reduce because the answer is oscillation size and 45 trials can't fill 20k-D; build per-class covariances; solve `eigh(C1, C1+C2)` for the filters whose eigenvalue is farthest from 0.5; then blend with `@` and take log-variance → 4 numbers."
 **🖥️ Show:** `pytest tests/test_csp_parity.py -v` → **PASSED** (matches `mne.decoding.CSP` within 0.05 on identical splits, ≥ 0.60 on a single subject).
@@ -241,7 +239,6 @@ Goal: turn one trial (64 × 321 ≈ 20k numbers) into **4 numbers** that separat
 - *Why exactly 2 classes?* — CSP is a 2-class method; our six experiments are all binary, so no OvR needed.
 - *Prove it's correct, not plausible?* — Parity test vs MNE (<0.05); the bonus Jacobi solver matches scipy to ~1e-14.
 - *Did you use a forbidden function?* — No; the sheet allows numpy/scipy for eigendecomposition/SVD/covariance, and I even reimplemented those.
-- *Why is exp0 (L vs R hand) the hardest (~0.57)?* — Both hands, adjacent near-symmetric cortex → small contralateral difference; hands-vs-feet is much easier.
 
 → **Yes**
 
@@ -265,6 +262,7 @@ Goal: turn one trial (64 × 321 ≈ 20k numbers) into **4 numbers** that separat
 - *What if a subject fails?* — `run_all` skips **only** data/IO errors (narrow catch); genuine algorithm bugs propagate, never hidden. I can rerun that subject's `train` in isolation.
 - *Is the gate seeded?* — Unseeded it fluctuates slightly around 0.65; the bar is on the grand mean.
 - *Why the per-subject variance?* — BCI is famously subject-variable; that's why the bar is a 109-subject mean and each subject uses 10-fold averaging.
+- *Why is exp0 (L vs R hand) the weakest experiment (~0.57)?* — Both are hands on adjacent, near-symmetric motor cortex, so the contralateral difference is small; hands-vs-feet (lateral vs midline) is much easier (~0.71–0.84).
 - *Time?* — ~2.5 min cached; first run also downloads ~3.1 GB.
 
 → **Yes / 5/5**
