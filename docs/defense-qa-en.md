@@ -150,7 +150,7 @@ Accuracy: 0.6667
 **👉 Say:** "Each line is **[prediction] [truth] match**; ids 1 = imagined hands (T1), 2 = imagined feet (T2). These 9 were never seen in training; 6/9 = 0.6667."
 
 **❓ Q&A**
-- *Where are the 'validation tools'?* — Prediction runs on the **held-out validation set** and accuracy is computed vs ground truth.
+- *Where are the 'validation tools'?* — Be precise: "validation tools" = the *scoring method*, not the data. `predict` evaluates the model on the **held-out set** `train` saved (trials it never saw) and computes **accuracy vs ground truth** — that's the validation. It does *not* re-run `cross_val_score` (that's `train`'s job); here the validation is the held-out accuracy.
 - *Why only 9 trials?* — The 20 % `train` set aside for this subject/experiment.
 - *0.6667 vs train's 0.7333?* — Train = 10-fold average; this = one fixed 9-trial test. Different estimator.
 - *Does predict retrain?* — No, only loads the `.joblib`; inference = CSP transform + one LDA dot product.
