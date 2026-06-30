@@ -171,13 +171,13 @@ Accuracy: 0.6667
 - The "2 seconds" is mostly **collecting the 2-second window** after the event (TMIN=0…TMAX=2.0); the compute is negligible.
 
 **🗣️ Say:** "predict streams one 2-second epoch at a time; measured latency is ~0.1–0.5 **ms** — a ten-thousandth of the 2-second budget — and `assert latency < 2.0` enforces it. The data is pre-recorded, so this is a **simulated stream** (replaying held-out epochs one by one) rather than live hardware; I used a loop instead of `mne-realtime`."
-**🖥️ Show:** per-event latency `0.0001–0.0005 s  OK (<2s)`.
+**🖥️ Show:** `python mybci.py 4 14 predict` — every line ends with the inference latency, e.g. `epoch 00:  [2]  [1] False  0.42 ms`. Each event is ~0.1–0.4 ms, far under the 2-second budget.
 
 **❓ Q&A**
 - *Is it a real live stream?* — A per-event simulation over pre-recorded data; the processing model (one event, 2 s budget) is identical to live.
 - *Why so fast?* — Inference has no iterative computation.
 - *What dominates the 2 s?* — Collecting the 2-second window; compute is ~0.5 ms.
-- *Where is 2 s guaranteed?* — `assert latency < LATENCY_BUDGET_S` in `predict.py`, plus the epoch is the 2-second post-event window.
+- *Where is 2 s guaranteed / how do you prove the timing?* — `predict` measures each inference with `time.perf_counter` and **prints it as a latency column** (~0.1–0.4 ms); `assert latency < LATENCY_BUDGET_S` (2.0 s) crashes if any event ever exceeds the budget; and the epoch itself is the 2-second post-event window.
 - *Why not mne-realtime?* — A loop satisfies "streamed, within 2 s" with no extra real-time dependency.
 
 → **Yes**

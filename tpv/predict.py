@@ -16,7 +16,7 @@ def predict(subject: int, run: int) -> float:
     art = joblib.load(path)                       # heavy work BEFORE the loop
     pipe, X_test, y_test = art["pipeline"], art["X_test"], art["y_test"]
 
-    print("epoch nb: [prediction] [truth] equal?")
+    print("epoch nb: [prediction] [truth] equal?  latency")
     correct = 0
     for i in range(X_test.shape[0]):
         chunk = X_test[i:i + 1]                   # (1, 64, n_times)
@@ -30,7 +30,7 @@ def predict(subject: int, run: int) -> float:
         correct += equal
         # Map internal class index {0,1} -> {1,2} for parity with the PDF example.
         # (predict is single-run addressable -> only exp0-3, where 0/1 == T1/T2.)
-        print(f"epoch {i:02d}:    [{pred + 1}]    [{truth + 1}] {equal}")
+        print(f"epoch {i:02d}:    [{pred + 1}]    [{truth + 1}] {equal}    {latency * 1000:.2f} ms")
 
     acc = correct / X_test.shape[0] if X_test.shape[0] else 0.0
     print(f"Accuracy: {acc:.4f}")
