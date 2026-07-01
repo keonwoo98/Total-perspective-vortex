@@ -343,36 +343,40 @@ Accuracy: 0.6667
 **📚 알아야 할 개념 — 쉬운 버전.** 기준은 **깊이 판** 것에 가산점 — 어려운 수학을 라이브러리로만 부르지 않고 직접 짠 것. 저는 **세 개**를 했어요:
 
 **A. 자작 고유분해 — `jacobi.py`.**
-- *무엇인가.* 고유분해(`eigh`)는 CSP의 심장 — 레시피를 찾는 부분. 보통 scipy를 부르는데, **순수 numpy로 직접** 짰어요.
-- *어떻게(쉽게).* **Jacobi** 방법은 행렬의 비대각 숫자를 **회전으로 한 쌍씩 0으로** 만들길 반복, 대각만 남을 때까지 → **대각 = 고유값**, 누적 **회전 = 고유벡터**. `+, ×, sqrt, sign`만 씀 — `eig/eigh/svd`·scipy 없음. (일반화 문제 `C1 w = λ(C1+C2)w`는 "백색화"로 표준 문제로 바꾼 뒤 Jacobi 두 번.)
-- *증거.* scipy와 **~1e-14** 일치(사실상 동일). `MyCSP(solver="jacobi")`로 켬.
+- *고유분해가 뭔가.* 대칭 행렬에서 특별한 **방향(고유벡터)**과 **숫자(고유값)**를 찾는 것. CSP에선 이 방향들이 곧 **레시피**, 숫자가 λ 점수. `scipy.linalg.eigh`가 하는 일을 직접 짰어요.
+- *Jacobi가 어떻게 도나(쉽게).* 대칭 행렬은 **고유벡터 기준(basis)에서 딱 "대각선만 남고 나머지 0"**이 돼요 — 그때 대각선이 곧 고유값. Jacobi는 **비대각 한 쌍을 0으로 만드는 2D 회전**을 모든 쌍에 반복 적용해 거기 도달해요. **누적 회전 = 고유벡터**, **최종 대각선 = 고유값**. `+, ×, sqrt, sign`만 — `eig/eigh/svd`·scipy 없음.
+- *일반화(CSP가 필요한 것).* CSP는 `C1 w = λ(C1+C2)w` — **두** 행렬. **백색화**(C1+C2가 항등행렬처럼 되게 하는 변환)로 한 행렬 문제로 바꾼 뒤 Jacobi. 그래서 Jacobi **두 번**.
+- *증거.* scipy와 **~1e-14** 일치, bonus_demo에서 `[A]`=`[mandatory]`(0.8444) = scipy `eigh`와 같은 결과. `MyCSP(solver="jacobi")`로 켬.
 
 **C. 하이퍼파라미터 튜닝 — `evaluate.tune`.**
 - *무엇인가.* 파이프라인에 손잡이가 하나 — `n_components`(레시피 몇 개; 기본 4). 찍지 않고 **`GridSearchCV`**로 **4/6/8**을 자동으로 시도해 제일 좋은 걸 채택.
 - *어떻게(누수 없이).* **중첩** 교차검증: 후보마다 inner fold 안에서 CSP를 재학습해 시험 데이터가 안 샘. 공식 60% 게이트는 4 고정(공정·비교 가능); 튜닝은 데모.
 
 **D. 자작 분류기 — `own_lda.py`.**
-- *무엇인가.* LDA는 울타리를 긋는 분류기. 보통 sklearn LDA를 부르는데, **직접 numpy로** 짰어요.
-- *어떻게(쉽게).* 두 클래스 **중심** μ0, μ1, 울타리 **방향** `w = Σ⁻¹(μ1−μ0)`(중심→중심을 구름 퍼짐으로 보정)을 구하고, 점을 **`w·x + b`의 부호**로 분류 — `np.linalg.solve`만.
-- *증거.* sklearn LDA와 **예측 100% 동일**.
+- *무엇인가.* LDA는 두 무리 사이에 울타리를 긋는 분류기. sklearn에 있지만 **직접 numpy로** 짰어요.
+- *어떻게(`fit`의 실제 단계).* ① 문제를 클래스별로 나눠 각 무리의 **중심** μ0, μ1 계산. ② 퍼짐 **Σ**(클래스 안 공분산) + 작은 ridge(역행렬 가능하게). ③ 울타리 **방향** `w = Σ⁻¹(μ1−μ0)` — `np.linalg.solve(Σ, μ1−μ0)`. ④ 울타리 **위치** `b` = 중간점 + 클래스 균형 보정. ⑤ 점을 **`w·x + b`의 부호**로 분류. `np.cov` + `np.linalg.solve`만 — sklearn LDA 안 부름.
+- *증거 + 정직한 단서.* sklearn `LinearDiscriminantAnalysis`(**shrinkage 없음**)와 **100% 일치** — 교과서 LDA. bonus_demo에서 `[D]` 0.7889가 `[mandatory]` 0.8444보다 약간 낮은 건 **버그 아님**: 기본 파이프라인 LDA는 `shrinkage='auto'`(자동 정칙화)라 작은 36문제 fold에서 조금 더 잘 일반화해요. OwnLDA는 교과서 그대로(고정 ridge), 그 자동 shrinkage만 없을 뿐.
 
 (+ **F. FBCSP**도 여기서 "복잡한 차원축소"에 해당.)
 
-**🖥️ 시연:** `python scripts/bonus_demo.py` 한 번이면 다 나와요:
+**🖥️ 시연:** `python scripts/bonus_demo.py` 한 번이면 다 나와요 (1번 사람, 실험3):
 ```
-[A] from-scratch Jacobi eigensolver : 0.8444   (표준 vs numpy 5.33e-14, 일반화 vs scipy 1.55e-15)
-[C] tuned {'csp__n_components': 8}   -> cv 0.8444
-[D] from-scratch OwnLDA classifier  : 0.7889   (sklearn LDA와 100% 일치)
+[mandatory] scratch CSP (eigh) + LDA : 0.8444   (기준선: scipy eigh + sklearn LDA shrinkage='auto')
+[A] from-scratch Jacobi eigensolver  : 0.8444   (기준선과 동일 → 솔버 검증)
+[C] tuned {'csp__n_components': 8}    -> cv 0.8444   (튜닝 작동; 이 사람은 8=4)
+[D] from-scratch OwnLDA classifier   : 0.7889   (교과서 LDA; = shrinkage 없는 sklearn LDA)
+[F] Filter-Bank CSP (4 sub-bands)    : 0.8222   (기본 CSP보다 약간 낮음; 8특징)
 ```
 
-**🗣️ 할 말:** "밑바닥까지 팠습니다: 자작 고유솔버(Jacobi, scipy와 ~1e-14), 누수 없는 하이퍼파라미터 튜닝, 자작 LDA(sklearn과 100% 일치) — 평가표 요구를 넘어서요."
+**🗣️ 할 말:** "밑바닥까지 팠습니다: 자작 고유솔버(Jacobi, scipy와 ~1e-14, 라이브러리 eigh와 같은 정확도), 누수 없는 하이퍼파라미터 튜닝, 자작 LDA(sklearn 교과서 LDA와 정확히 일치) — 평가표 요구를 넘어서요."
 
 **❓ Q&A**
 - *정말 고유분해 라이브러리 없이?* — `jacobi.py`는 기본 연산만; scipy와 ~5e-14.
 - *Jacobi 작동 방식?* — 회전으로 비대각을 0으로, 대각=고유값; 백색화로 일반화 문제 축소 후 Jacobi 두 번.
 - *튜닝 누수 없나?* — 없음; inner fold마다 CSP 재학습.
 - *왜 게이트는 4성분 고정?* — 공정·비교 가능한 채점; 튜닝은 데모.
-- *OwnLDA가 sklearn과 같나?* — 예측 100% 일치(같은 풀드 공분산 + Σ⁻¹(μ1−μ0)).
+- *OwnLDA가 sklearn과 같나?* — **shrinkage 없는** sklearn LDA와 100% 일치(같은 교과서 공식). 기본 파이프라인은 `shrinkage='auto'`라 작은 fold에서 약간 높음(0.8444 vs 0.7889) — 정칙화 선택 차이지 버그 아님.
+- *왜 bonus_demo에서 [D]가 [mandatory]보다 낮나?* — 같은 이유: OwnLDA=교과서 LDA(고정 ridge), 기준선 LDA=자동 shrinkage. OwnLDA는 충실한 자작 분류기, 그 추가 기능만 없을 뿐.
 
 → **Yes**
 

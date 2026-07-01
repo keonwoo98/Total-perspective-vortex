@@ -333,36 +333,40 @@ Accuracy: 0.6667
 **📚 Concept — easy version.** The criterion rewards **going deep** — writing the hard math yourself instead of only calling libraries. I did **three**:
 
 **A. My own eigendecomposition — `jacobi.py`.**
-- *What it is.* The eigendecomposition (`eigh`) is the heart of CSP — it finds the recipes. Normally you just call scipy; I wrote **my own** in pure numpy.
-- *How (easy).* The **Jacobi** method repeatedly "rotates" the matrix to turn its off-diagonal numbers into zeros, one pair at a time, until only the diagonal is left → the **diagonal = the eigenvalues**, the accumulated **rotations = the eigenvectors**. It uses only `+, ×, sqrt, sign` — no `eig/eigh/svd`, no scipy. (The generalized problem `C1 w = λ(C1+C2)w` is first turned into a plain one by "whitening", then Jacobi runs twice.)
-- *Proof.* Matches scipy to **~1e-14** (essentially identical). Turn on with `MyCSP(solver="jacobi")`.
+- *What eigendecomposition is.* For a symmetric matrix it finds special **directions (eigenvectors)** and **numbers (eigenvalues)**. In CSP those directions **are the recipes** and the numbers are the λ scores. `scipy.linalg.eigh` does this; I wrote my own.
+- *How Jacobi works (easy).* A symmetric matrix is "diagonal" (zeros everywhere except the diagonal) **exactly in its eigenvector basis** — and then the diagonal *is* the eigenvalues. Jacobi gets there by repeatedly applying a **2-D rotation that turns one off-diagonal pair into 0**, sweeping over all pairs until everything off-diagonal is ~0. The **accumulated rotations = the eigenvectors**, the **final diagonal = the eigenvalues**. It uses only `+, ×, sqrt, sign` — no `eig/eigh/svd`, no scipy.
+- *The generalized case (what CSP needs).* CSP solves `C1 w = λ(C1+C2)w` — **two** matrices. I turn it into a plain one-matrix problem by **whitening** (a transform that makes `C1+C2` behave like the identity), then run Jacobi. So Jacobi runs **twice**.
+- *Proof.* Matches scipy to **~1e-14** (essentially identical), and in bonus_demo `[A]` = `[mandatory]` (0.8444), i.e. same result as scipy's `eigh`. Turn on with `MyCSP(solver="jacobi")`.
 
 **C. Hyperparameter tuning — `evaluate.tune`.**
 - *What it is.* The pipeline has a knob — `n_components` (how many recipes; default 4). Instead of guessing, I use **`GridSearchCV`** to automatically try **4/6/8** and keep the best.
 - *How (leakage-free).* It's **nested** cross-validation: for each candidate, CSP is refit inside each inner fold, so no test data leaks. The official 60 % gate stays fixed at 4 (fair, comparable score); tuning is a demo.
 
 **D. My own classifier — `own_lda.py`.**
-- *What it is.* LDA is the classifier that draws the fence. Normally you call sklearn's LDA; I wrote **my own** in numpy.
-- *How (easy).* Compute the two class **centers** μ0, μ1, the fence **direction** `w = Σ⁻¹(μ1−μ0)` (center-to-center, corrected by the clouds' spread), then classify a point by the **sign of `w·x + b`** — using only `np.linalg.solve`.
-- *Proof.* **100 % identical predictions** to sklearn's LDA.
+- *What it is.* LDA is the classifier that draws the fence between the two clouds. sklearn has one; I wrote **my own** in numpy.
+- *How (the actual steps in `fit`).* ① split trials by class → compute each cloud's **center** μ0, μ1. ② compute the pooled **spread** Σ (within-class covariance) + a tiny ridge so it's invertible. ③ fence **direction** `w = Σ⁻¹(μ1−μ0)` via `np.linalg.solve(Σ, μ1−μ0)` (center-to-center, tilted by the spread). ④ fence **position** `b` = midpoint + class-balance term. ⑤ classify a point by the **sign of `w·x + b`**. Uses only `np.cov` + `np.linalg.solve` — no sklearn LDA.
+- *Proof + honest caveat.* It matches sklearn's `LinearDiscriminantAnalysis` (**no shrinkage**) **100 %** — it's the textbook LDA. In bonus_demo, `[D]` 0.7889 is a bit below `[mandatory]` 0.8444 — **not a bug**: the mandatory pipeline's LDA uses `shrinkage='auto'` (automatic Ledoit-Wolf regularization), which generalizes slightly better on the small 36-trial CV folds. OwnLDA is the faithful textbook version (fixed tiny ridge), just without the auto-shrinkage.
 
 (+ **F. FBCSP** also counts here as a "complex dimensionality reduction".)
 
-**🖥️ Show:** `python scripts/bonus_demo.py` prints all of these in one run:
+**🖥️ Show:** `python scripts/bonus_demo.py` prints all of these in one run (subject 1, exp 3):
 ```
-[A] from-scratch Jacobi eigensolver : 0.8444   (standard eig vs numpy 5.33e-14, generalized vs scipy 1.55e-15)
-[C] tuned {'csp__n_components': 8}   -> cv 0.8444
-[D] from-scratch OwnLDA classifier  : 0.7889   (100% agreement with sklearn LDA)
+[mandatory] scratch CSP (eigh) + LDA : 0.8444   (baseline: scipy eigh + sklearn LDA w/ shrinkage='auto')
+[A] from-scratch Jacobi eigensolver  : 0.8444   (identical to baseline → validates the solver)
+[C] tuned {'csp__n_components': 8}    -> cv 0.8444   (tuning ran; 8 ties 4 for this subject)
+[D] from-scratch OwnLDA classifier   : 0.7889   (textbook LDA; = sklearn LDA w/o shrinkage)
+[F] Filter-Bank CSP (4 sub-bands)    : 0.8222   (slightly below plain CSP; 8 features)
 ```
 
-**🗣️ Say:** "I dug to the bottom: my own eigensolver (Jacobi, matching scipy to ~1e-14), leakage-free hyperparameter tuning, and my own LDA classifier (100 % agreement with sklearn) — beyond what the sheet even requires."
+**🗣️ Say:** "I dug to the bottom: my own eigensolver (Jacobi, matching scipy to ~1e-14 and giving the same accuracy as the library `eigh`), leakage-free hyperparameter tuning, and my own LDA classifier (matches sklearn's textbook LDA exactly) — beyond what the sheet even requires."
 
 **❓ Q&A**
 - *Really no eigendecomposition library?* — `jacobi.py` uses only basic ops; matches scipy ~5e-14.
 - *How does Jacobi work?* — Rotations zero off-diagonals until diagonal = eigenvalues; whitening reduces the generalized problem, then Jacobi twice.
 - *Is the tuning leakage-free?* — Yes; CSP is refit inside each inner fold.
 - *Why keep the gate at 4 components?* — Fair, comparable scoring; tuning is a demo.
-- *Does OwnLDA match sklearn?* — 100 % identical predictions (same pooled covariance + Σ⁻¹(μ1−μ0)).
+- *Does OwnLDA match sklearn?* — 100 % vs sklearn's LDA **without shrinkage** (same textbook formula). The mandatory pipeline's LDA uses `shrinkage='auto'`, which scores a touch higher on small CV folds (0.8444 vs 0.7889) — a regularization choice, not a bug.
+- *Why is `[D]` below `[mandatory]` in bonus_demo?* — Same reason: OwnLDA = textbook LDA (fixed ridge); the baseline LDA adds automatic shrinkage. OwnLDA is a faithful from-scratch classifier, just without that extra.
 
 → **Yes**
 
