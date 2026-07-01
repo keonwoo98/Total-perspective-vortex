@@ -6,6 +6,8 @@ unchanged (MyCSP is channel-count-agnostic). moabb is in requirements.txt; it is
 here so importing tpv never loads moabb's heavy tree unless load_external is called. This is an INDEPENDENT run on a
 different dataset (22 channels, 250 Hz) — not merged with the PhysioNet data.
 """
+import warnings
+
 import numpy as np
 
 from tpv import config
@@ -38,17 +40,25 @@ def load_external(subject: int = 1):
             "load_external needs 'moabb' (in requirements.txt): pip install -r requirements.txt"
         ) from exc
 
+    # moabb's dataset key isn't in MNE's known list, so set_config emits a harmless
+    # "Setting non-standard config type" RuntimeWarning; silence just that message.
+    def _quiet_set(k, v):
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", message="Setting non-standard config type", category=RuntimeWarning)
+            set_config(k, v)
+
     target = str(config.DATA_DIR)
     prev = {k: get_config(k) for k in _MNE_PATH_KEYS}
     for k in _MNE_PATH_KEYS:
-        set_config(k, target)
+        _quiet_set(k, target)
     try:
         paradigm = LeftRightImagery(fmin=config.FMIN, fmax=config.FMAX)
         X, y_str, _ = paradigm.get_data(
             dataset=BNCI2014_001(), subjects=[subject], return_epochs=False)
     finally:
         for k, v in prev.items():
-            set_config(k, v)  # restore (None removes the key)
+            _quiet_set(k, v)  # restore (None removes the key)
 
     X = np.asarray(X, dtype=np.float64)
     y = np.array([_LABELS[label] for label in y_str], dtype=int)
