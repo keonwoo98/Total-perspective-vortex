@@ -289,9 +289,13 @@ Accuracy: 0.6667
 > *"Are there other datasets processed by the program ? Is the scoring on those datasets correct ? Try to assert this taking into account the noise and the general quality of the dataset compared to the one given in the subject."*
 > (번역) 다른 데이터셋도 처리? 채점이 올바른가(주제 대비 노이즈·품질 고려)?
 
-**📚 알아야 할 개념:**
-- **BCI Competition IV-2a**(moabb): 구조가 다른 데이터셋 — **22채널, 250Hz, 288 trial**. 파이프라인이 **그대로** 도는 건 **MyCSP가 채널 수 무관**(공분산이 채널수²)이고 `external.py`가 7–30Hz를 moabb에 넘기기 때문.
-- 프로젝트 `mne_data/`로 받음(호출 동안만 moabb의 `MNE_DATASETS_BNCI_PATH`를 프로젝트로, 끝나면 복원) + 필수 게이트와 **별도 실행**.
+**📚 알아야 할 개념 — 쉬운 버전 (무엇/왜/어떻게/결과):**
+- **무엇을 추가했나.** **두 번째, 완전히 별개인 EEG 데이터셋** — 유명한 운동상상 벤치마크 **BCI Competition IV-2a** — 를 **moabb** 라이브러리로 가져옴.
+- **왜 좋은 테스트인가.** PhysioNet과 구조가 완전히 달라요: **전극 22개(64 아님), 초당 250번(160 아님), 288 trial**. 파이프라인이 *다른* 데이터셋을 **코드 수정 없이** 처리하면 = PhysioNet에 하드코딩 안 된 범용이라는 증거.
+- **어떻게 처리하나.** `external.py`가 moabb로 IV-2a를 받아 **PhysioNet과 같은 `(문제, 채널, 시간)` 형식**으로 바꾸고, **같은 7–30Hz** 대역으로 필터(왼손 vs 오른손 상상). 그다음 **같은 MyCSP + LDA 파이프라인**에 그대로 넣음.
+- **왜 그대로 되나.** MyCSP는 64채널을 가정하지 않아요 — 공분산이 `채널수 × 채널수`라, 22채널이면 22×22로 자동으로 맞춰짐.
+- **결과.** IV-2a 1번 피험자 **0.855** — PhysioNet 0.658보다 *높은데* 이게 **맞아요**: IV-2a는 정제된 대회 데이터(노이즈 적음)라, 기준이 말한 "품질 고려" 그대로 — 깨끗한 데이터 → 높은 점수.
+- **어디 저장되나.** 프로젝트 `mne_data/`로 받고 **별도 실행**이라 필수 60% 게이트(PhysioNet만)엔 **영향 없음**. (내부적으로 호출 동안만 moabb의 `MNE_DATASETS_BNCI_PATH`를 프로젝트로 바꾸고 끝나면 복원.)
 
 **🗣️ 할 말:** "다른 데이터셋 BCI IV-2a — 22채널·250Hz — 를 붙였고 파이프라인이 그대로 **0.855**. 0.658보다 높은 건 IV-2a가 정제된 대회 데이터라 노이즈가 적어서 — 평가표가 말한 품질 고려 그대로."
 **🖥️ 시연:** `python scripts/bonus_demo.py` → `[G] 2nd dataset BCI IV-2a (subj 1) : 0.8552`(모양 288×22×1001).
@@ -312,9 +316,12 @@ Accuracy: 0.6667
 > *"Try to evaluate the relevance of the preprocessing stage and how are the data feeded to the algorithm. The use of fourier or wavelet transform, and anything that transform the data before the processing is a plus."*
 > (번역) 전처리 적절성 + 데이터 입력 방식 평가. 푸리에/웨이블릿 등 처리 전 변환은 가산점.
 
-**📚 알아야 할 개념:**
-- **FBCSP(Filter-Bank CSP)**가 7–30Hz를 **4개 하위 밴드(8-12 / 12-16 / 16-20 / 20-30)**로 쪼개 밴드마다 CSP → 8특징, 이어붙임.
-- *왜 쪼개나:* 단일 7–30은 뮤·저베타·고베타를 뭉침; **ERD 세기·분포가 주파수마다 달라** FBCSP가 밴드별 공간패턴을 학습하고 분류기가 밴드 중요도를 가중 — 단일 CSP에 없는 주파수 해상도. 푸리에/웨이블릿 계열의 특징공학. 밴드패스가 `fit`/`transform` 안이라 CV가 fold마다 재학습(누수 없음).
+**📚 알아야 할 개념 — 쉬운 버전 (뭘 요구/뭘 만듦/어떻게/결과):**
+- **기준이 원하는 것.** 데이터를 알고리즘에 넣기 *전에* 더 똑똑하게 변환한 것에 가산점 — 푸리에/웨이블릿 등 영리한 사전 변환. "특징 준비가 단순 필터 이상이냐?"를 물어요.
+- **내가 만든 것: FBCSP(Filter-Bank CSP).** 기본 CSP는 7–30Hz 전체를 **한 덩어리**로 봐요. FBCSP는 **7–30Hz를 4개 좁은 하위 밴드(8-12, 12-16, 16-20, 20-30Hz)로 쪼개** 밴드마다 **따로 CSP**를 돌리고 특징을 이어붙여요.
+- **왜 더 똑똑한가.** 운동 신호(ERD)는 사람마다 강한 주파수가 달라요 — 누구는 **뮤(8-12)**, 누구는 **베타(13-30)**. 한 넓은 밴드는 이걸 뭉개는데, 쪼개면 **밴드마다 전용 감지기**가 생기고 분류기가 **어느 밴드가 중요한지** 배워요. 이게 기준이 가리키는 "적합한 주파수를 학습" 보너스(주파수 영역 변환, 푸리에/웨이블릿 계열).
+- **데이터를 어떻게 넣나.** 각 하위 밴드 → 밴드패스 → 그 밴드의 CSP → 로그-분산 → **이어붙여** `4밴드 × 2성분 = 8숫자`를 분류기에. 밴드패스가 `fit`/`transform` 안이라 CV가 fold마다 재학습(누수 없음).
+- **결과.** 여기선 **0.822** (이 피험자에서 기본 CSP 0.844). 솔직히 약간 낮음 — 8특징이 ~45문제에 약간 과적합 — 이지만 **엄밀히 더 표현력** 있고 다른 데이터선 이길 수 있음; 진짜 더 정교한 특징공학 시연.
 
 **🗣️ 할 말:** "주파수 변환 두 층: 필수 FIR 밴드패스가 하나; 보너스 **FBCSP**가 대역을 4 하위밴드로 쪼개 밴드마다 CSP라 분류기가 주파수 중요도를 가중. 솔직히 여기선 0.822 vs 0.844 — 8특징이 ~45문제에 약간 과적합 — 이지만 엄밀히 더 표현력 있고 견고한 특징공학 시연."
 **🖥️ 시연:** `[F] Filter-Bank CSP (4 sub-bands) : 0.8222`(기본 CSP 0.8444).
@@ -333,21 +340,30 @@ Accuracy: 0.6667
 > *"How deep did the student dig into his implementation ? ( Did he implement his own eigenvalues decomposition, SVD, or covariance matrix estimation ? ) ( Did he implement a complex dimensionality reduction algorithm ? ) Is there some kind of hyperparameter tuning or learning ? Did he implement his own classifier ?"*
 > (번역) 얼마나 깊이 — 자작 고유값분해/SVD/공분산? 복잡한 차원축소? 튜닝/학습? 자작 분류기?
 
-**📚 개념 + 🖥️ 시연 (하위 항목별):**
+**📚 알아야 할 개념 — 쉬운 버전.** 기준은 **깊이 판** 것에 가산점 — 어려운 수학을 라이브러리로만 부르지 않고 직접 짠 것. 저는 **세 개**를 했어요:
 
-**A. 자작 고유분해(`jacobi.py`).** cyclic Jacobi가 비대각 원소를 한 쌍씩 회전으로 0으로, 대각이 될 때까지 sweep — 대각=고유값, 누적 회전=고유벡터. **일반화** `C1 w = λ(C1+C2)w`는 **백색화**로 표준화 후 Jacobi 두 번. `+,*,sqrt,sign,matmul`만 — `eig/eigh/svd`·scipy 없음.
+**A. 자작 고유분해 — `jacobi.py`.**
+- *무엇인가.* 고유분해(`eigh`)는 CSP의 심장 — 레시피를 찾는 부분. 보통 scipy를 부르는데, **순수 numpy로 직접** 짰어요.
+- *어떻게(쉽게).* **Jacobi** 방법은 행렬의 비대각 숫자를 **회전으로 한 쌍씩 0으로** 만들길 반복, 대각만 남을 때까지 → **대각 = 고유값**, 누적 **회전 = 고유벡터**. `+, ×, sqrt, sign`만 씀 — `eig/eigh/svd`·scipy 없음. (일반화 문제 `C1 w = λ(C1+C2)w`는 "백색화"로 표준 문제로 바꾼 뒤 Jacobi 두 번.)
+- *증거.* scipy와 **~1e-14** 일치(사실상 동일). `MyCSP(solver="jacobi")`로 켬.
+
+**C. 하이퍼파라미터 튜닝 — `evaluate.tune`.**
+- *무엇인가.* 파이프라인에 손잡이가 하나 — `n_components`(레시피 몇 개; 기본 4). 찍지 않고 **`GridSearchCV`**로 **4/6/8**을 자동으로 시도해 제일 좋은 걸 채택.
+- *어떻게(누수 없이).* **중첩** 교차검증: 후보마다 inner fold 안에서 CSP를 재학습해 시험 데이터가 안 샘. 공식 60% 게이트는 4 고정(공정·비교 가능); 튜닝은 데모.
+
+**D. 자작 분류기 — `own_lda.py`.**
+- *무엇인가.* LDA는 울타리를 긋는 분류기. 보통 sklearn LDA를 부르는데, **직접 numpy로** 짰어요.
+- *어떻게(쉽게).* 두 클래스 **중심** μ0, μ1, 울타리 **방향** `w = Σ⁻¹(μ1−μ0)`(중심→중심을 구름 퍼짐으로 보정)을 구하고, 점을 **`w·x + b`의 부호**로 분류 — `np.linalg.solve`만.
+- *증거.* sklearn LDA와 **예측 100% 동일**.
+
+(+ **F. FBCSP**도 여기서 "복잡한 차원축소"에 해당.)
+
+**🖥️ 시연:** `python scripts/bonus_demo.py` 한 번이면 다 나와요:
 ```
-[A] Jacobi 정확도 : 0.8444   표준 고유분해 vs numpy : 5.33e-14   일반화 vs scipy : 1.55e-15
+[A] from-scratch Jacobi eigensolver : 0.8444   (표준 vs numpy 5.33e-14, 일반화 vs scipy 1.55e-15)
+[C] tuned {'csp__n_components': 8}   -> cv 0.8444
+[D] from-scratch OwnLDA classifier  : 0.7889   (sklearn LDA와 100% 일치)
 ```
-**C. 하이퍼파라미터 튜닝(`evaluate.tune`).** `GridSearchCV`로 `n_components ∈ {4,6,8}`, inner fold마다 CSP 재학습 = **누수 없는 중첩 CV**. 공식 게이트는 비교 공정성 위해 4 고정.
-```
-[C] tuned {'csp__n_components': 8} -> cv 0.8444
-```
-**D. 자작 분류기(`own_lda.py`).** 풀드 공분산, **`w = Σ⁻¹(μ1−μ0)`**, 사전확률 보정 절편, 판정 = sign(`w·x+b`), `np.linalg.solve`만.
-```
-[D] OwnLDA 정확도 : 0.7889   sklearn LDA와 일치율 : 100.0%
-```
-(+ **F. FBCSP**도 "복잡한 차원축소"에 해당.)
 
 **🗣️ 할 말:** "밑바닥까지 팠습니다: 자작 고유솔버(Jacobi, scipy와 ~1e-14), 누수 없는 하이퍼파라미터 튜닝, 자작 LDA(sklearn과 100% 일치) — 평가표 요구를 넘어서요."
 

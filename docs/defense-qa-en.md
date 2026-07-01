@@ -281,9 +281,13 @@ Accuracy: 0.6667
 **📋 Criterion (verbatim, evaluation sheet):**
 > *"Are there other datasets processed by the program ? Is the scoring on those datasets correct ? Try to assert this taking into account the noise and the general quality of the dataset compared to the one given in the subject."*
 
-**📚 Concept — what you need to know:**
-- **BCI Competition IV-2a** (via moabb): a structurally different dataset — **22 channels, 250 Hz, 288 trials**. My pipeline runs **unchanged** because **MyCSP is channel-count-agnostic** (covariance is n_ch × n_ch) and `external.py` passes my 7–30 Hz band to moabb.
-- It downloads into the project's `mne_data/` (I point moabb's `MNE_DATASETS_BNCI_PATH` at the project for the call, then restore it) and is a **separate run** from the mandatory gate.
+**📚 Concept — easy version (what / why / how / result):**
+- **What I added.** A **second, completely separate EEG dataset** — **BCI Competition IV-2a**, a well-known motor-imagery benchmark — pulled in with the **moabb** library.
+- **Why it's a good test.** It's built totally differently from PhysioNet: **22 electrodes (not 64), 250 samples/sec (not 160), 288 trials**. If my pipeline handles a *different* dataset with **no code changes**, that proves it's general, not hardcoded to PhysioNet.
+- **How I process it.** `external.py` uses moabb to download IV-2a and reshape it into the **same `(trials, channels, time)` format** as my PhysioNet data, filtered to the **same 7–30 Hz** band (left- vs right-hand imagery). Then it feeds the **same MyCSP + LDA pipeline** — unchanged.
+- **Why unchanged works.** MyCSP never assumes 64 channels — its covariance is `n_channels × n_channels`, so with 22 channels it just becomes 22×22 and adapts automatically.
+- **Result.** **0.855** on IV-2a subject 1 — *higher* than PhysioNet's 0.658, which is **correct**: IV-2a is a clean, curated competition dataset (less noise), and the criterion says to judge "taking into account quality". Cleaner data → higher score.
+- **Where it lives.** Downloads into the project's `mne_data/`; it's a **separate run** and does **not** touch the mandatory 60 % gate (PhysioNet only). (Under the hood I point moabb's `MNE_DATASETS_BNCI_PATH` at the project for the call, then restore it.)
 
 **🗣️ Say:** "I added BCI IV-2a, a different dataset — 22 channels, 250 Hz — and my pipeline runs unchanged at **0.855**. It's higher than 0.658 because IV-2a is a curated competition dataset with less noise, exactly the quality caveat the sheet mentions."
 **🖥️ Show:** `python scripts/bonus_demo.py` → `[G] 2nd dataset BCI IV-2a (subj 1) : 0.8552` (shape 288×22×1001).
@@ -303,9 +307,12 @@ Accuracy: 0.6667
 **📋 Criterion (verbatim, evaluation sheet):**
 > *"Try to evaluate the relevance of the preprocessing stage and how are the data feeded to the algorithm. The use of fourier or wavelet transform, and anything that transform the data before the processing is a plus."*
 
-**📚 Concept — what you need to know:**
-- **FBCSP (Filter-Bank CSP)** splits 7–30 Hz into **4 sub-bands (8-12 / 12-16 / 16-20 / 20-30)** and runs a separate CSP per band → 8 features, concatenated.
-- *Why split:* a single 7–30 Hz band lumps mu/low-beta/high-beta together, but **ERD strength and topography differ by frequency**; FBCSP learns a separate spatial pattern per band and lets the classifier weight which bands matter — a frequency resolution plain CSP lacks. It's in the Fourier/wavelet family of frequency-domain feature engineering. The band-pass lives inside `fit`/`transform`, so CV refits per fold (no leakage).
+**📚 Concept — easy version (what it wants / what I built / how / result):**
+- **What the criterion rewards.** Points for doing something *smarter* in how you transform the data before the algorithm — Fourier/wavelet or any clever pre-transform. It asks: "is your feature prep more than a plain filter?"
+- **What I built: FBCSP (Filter-Bank CSP).** Plain CSP treats the whole 7–30 Hz band as **one lump**. FBCSP instead **splits 7–30 Hz into 4 narrow sub-bands** (8-12, 12-16, 16-20, 20-30 Hz) and runs a **separate CSP on each sub-band**, then glues the features together.
+- **Why that's smarter.** The motor signal (ERD) is stronger at different frequencies for different people — some in **mu (8-12)**, some in **beta (13-30)**. One wide band blurs them; splitting gives **each sub-band its own detectors**, and the classifier learns **which sub-bands matter**. That's the "learns which frequencies matter" bonus the sheet points to (a frequency-domain transform, Fourier/wavelet family).
+- **How the data is fed.** Each sub-band → band-pass filter → its own CSP → log-variance → **concatenate** → `4 bands × 2 components = 8 numbers` into the classifier. The band-pass lives inside `fit`/`transform`, so cross-val refits per fold (no leakage).
+- **Result.** **0.822** here (vs plain CSP 0.844 on this subject). Honestly slightly lower — 8 features can mildly overfit ~45 trials — but it's a **strictly more expressive** method that can win on other data; it demonstrates a genuine, more sophisticated feature-engineering technique.
 
 **🗣️ Say:** "Two layers of frequency transformation: the mandatory FIR band-pass is already one; the bonus **FBCSP** splits the band into four sub-bands and runs a CSP per band, so the classifier can weight which frequencies matter. Honestly, here it's 0.822 vs 0.844 — eight features mildly overfit ~45 trials — but it's strictly more expressive and a sound feature-engineering demo."
 **🖥️ Show:** `[F] Filter-Bank CSP (4 sub-bands) : 0.8222` (plain CSP 0.8444).
@@ -323,21 +330,30 @@ Accuracy: 0.6667
 **📋 Criterion (verbatim, evaluation sheet):**
 > *"How deep did the student dig into his implementation ? ( Did he implement his own eigenvalues decomposition, SVD, or covariance matrix estimation ? ) ( Did he implement a complex dimensionality reduction algorithm ? ) Is there some kind of hyperparameter tuning or learning ? Did he implement his own classifier ?"*
 
-**📚 Concept + 🖥️ Show, per sub-item:**
+**📚 Concept — easy version.** The criterion rewards **going deep** — writing the hard math yourself instead of only calling libraries. I did **three**:
 
-**A. From-scratch eigensolver (`jacobi.py`).** Cyclic Jacobi zeroes off-diagonal entries one pair at a time via rotations, sweeping until the matrix is diagonal — the diagonal is the eigenvalues, accumulated rotations are the eigenvectors. The **generalized** problem `C1 w = λ(C1+C2)w` is reduced to standard form by **whitening**, then Jacobi runs twice. Only `+,*,sqrt,sign,matmul` — no `eig/eigh/svd`, no scipy.
+**A. My own eigendecomposition — `jacobi.py`.**
+- *What it is.* The eigendecomposition (`eigh`) is the heart of CSP — it finds the recipes. Normally you just call scipy; I wrote **my own** in pure numpy.
+- *How (easy).* The **Jacobi** method repeatedly "rotates" the matrix to turn its off-diagonal numbers into zeros, one pair at a time, until only the diagonal is left → the **diagonal = the eigenvalues**, the accumulated **rotations = the eigenvectors**. It uses only `+, ×, sqrt, sign` — no `eig/eigh/svd`, no scipy. (The generalized problem `C1 w = λ(C1+C2)w` is first turned into a plain one by "whitening", then Jacobi runs twice.)
+- *Proof.* Matches scipy to **~1e-14** (essentially identical). Turn on with `MyCSP(solver="jacobi")`.
+
+**C. Hyperparameter tuning — `evaluate.tune`.**
+- *What it is.* The pipeline has a knob — `n_components` (how many recipes; default 4). Instead of guessing, I use **`GridSearchCV`** to automatically try **4/6/8** and keep the best.
+- *How (leakage-free).* It's **nested** cross-validation: for each candidate, CSP is refit inside each inner fold, so no test data leaks. The official 60 % gate stays fixed at 4 (fair, comparable score); tuning is a demo.
+
+**D. My own classifier — `own_lda.py`.**
+- *What it is.* LDA is the classifier that draws the fence. Normally you call sklearn's LDA; I wrote **my own** in numpy.
+- *How (easy).* Compute the two class **centers** μ0, μ1, the fence **direction** `w = Σ⁻¹(μ1−μ0)` (center-to-center, corrected by the clouds' spread), then classify a point by the **sign of `w·x + b`** — using only `np.linalg.solve`.
+- *Proof.* **100 % identical predictions** to sklearn's LDA.
+
+(+ **F. FBCSP** also counts here as a "complex dimensionality reduction".)
+
+**🖥️ Show:** `python scripts/bonus_demo.py` prints all of these in one run:
 ```
-[A] Jacobi accuracy : 0.8444   standard eig vs numpy : 5.33e-14   generalized vs scipy : 1.55e-15
+[A] from-scratch Jacobi eigensolver : 0.8444   (standard eig vs numpy 5.33e-14, generalized vs scipy 1.55e-15)
+[C] tuned {'csp__n_components': 8}   -> cv 0.8444
+[D] from-scratch OwnLDA classifier  : 0.7889   (100% agreement with sklearn LDA)
 ```
-**C. Hyperparameter tuning (`evaluate.tune`).** `GridSearchCV` over `n_components ∈ {4,6,8}`, refitting CSP inside each inner fold = **leakage-free nested CV**. The official gate stays fixed at 4 for fair comparison.
-```
-[C] tuned {'csp__n_components': 8} -> cv 0.8444
-```
-**D. From-scratch classifier (`own_lda.py`).** Pooled within-class covariance, **`w = Σ⁻¹(μ1−μ0)`**, prior-corrected intercept, decision = sign(`w·x+b`), only `np.linalg.solve`.
-```
-[D] OwnLDA accuracy : 0.7889   agreement w/ sklearn LDA : 100.0%
-```
-(+ **F. FBCSP** also counts as the "complex dimensionality reduction".)
 
 **🗣️ Say:** "I dug to the bottom: my own eigensolver (Jacobi, matching scipy to ~1e-14), leakage-free hyperparameter tuning, and my own LDA classifier (100 % agreement with sklearn) — beyond what the sheet even requires."
 
