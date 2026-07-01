@@ -224,12 +224,20 @@ Accuracy: 0.6667
 - **What CSP is.** **CSP (Common Spatial Patterns)** is the reducer I implement: it finds the best **combinations of channels** that make the two classes differ most in oscillation size.
 
 *How 20,544 → 4 (think of a trial as a table: **64 rows = channels × 321 columns = time = 20,544 cells**):*
-- **Cut 1 — channels 64 → 4.** A **recipe** = 64 weights, one per channel. Blending all 64 channels with it (multiply-and-sum, `@`) makes **one new "virtual channel"** (a row of 321) — like a DJ mixing 64 tracks into one. **One recipe → one row; 4 recipes → 4 rows** (`64×321 → 4×321`). And each recipe is a **detector**: its virtual channel wiggles big for one class, small for the other — usually **2 detect left, 2 detect right**.
-- **Cut 2 — time 321 → 1.** For each virtual channel, measure **how big it wiggled** = its **variance** → one number; then normalize and take **log**. So `4×321 → 4`. **Total: 20,544 → 4** (a recipe eats 64 channels → 1 row; a variance eats 321 time samples → 1 number).
+- **Cut 1 — channels 64 → 4.** A **recipe** = 64 weights `w`, one per channel. Blending all 64 channels with it makes **one new "virtual channel"** `z = wᵀE` (a row of 321) — like a DJ mixing 64 tracks into one. **One recipe → one row; 4 recipes → 4 rows** (`64×321 → 4×321`). Each recipe is a **detector**: its virtual channel wiggles big for one class, small for the other — usually **2 detect left, 2 detect right**.
+- **Cut 2 — time 321 → 1.** Reduce each virtual channel to **how big it wiggled** = its **variance** `var(z)`, then normalize (÷ the row-sum) and take **log**. So `4×321 → 4`. **Total: 20,544 → 4.**
 
-*How CSP finds those 4 recipes:* it keeps the 4 blends where the two classes differ **most** in wiggle size — the "**4 best one-sided detectors**." (Technically these are the top **eigenvectors** of `eigh(C1, C1+C2)`, each scored by **λ** = how one-sided it is; keep the 4 with λ farthest from 0.5. numpy/scipy are allowed for the covariance + eigendecomposition — everything else is from scratch.)
+*How CSP finds those 4 recipes (the math).* Each class gets a **covariance matrix** `C = mean of (E·Eᵀ)` (64×64, trace-normalized — "how its channels co-oscillate"). A recipe's variance *for that class* is then `wᵀC w`. We want a recipe that's big for one class and small for the other — i.e. maximize the **ratio**
+> `λ = wᵀC₁w / wᵀ(C₁+C₂)w`  = the fraction of that recipe's oscillation belonging to class 1.
+The maximizers are exactly the solutions of the **generalized eigenproblem `C₁w = λ(C₁+C₂)w`** — the **eigenvectors** of `eigh(C1, C1+C2)`, each with its **eigenvalue λ**. λ→1 = pure class-1 detector, λ→0 = pure class-2, **λ=0.5 = useless**; keep the **4 eigenvectors with λ farthest from 0.5**. (numpy/scipy are allowed for covariance + eigendecomposition — everything else is from scratch.)
 
-**📚 What the 4 numbers feed — LDA (the classifier):** each trial's 4 numbers are one **point** (~45 trials → ~45 points), and they form **two clouds** (one per class). **LDA draws a single straight line (a "fence") between the two clouds**, then classifies a new point by **which side of the fence it lands on**. (Its math `w = Σ⁻¹(μ1−μ0)` — the center-to-center direction, corrected by the clouds' spread — is the from-scratch bonus, item 2.11-D.) LDA is *not* dimensionality reduction — this item is only about the reducer (CSP).
+**📚 The classifier — LDA (what the 4 numbers feed).** Each trial's 4 numbers are one **point** (~45 trials → ~45 points), forming **two clouds** (one per class). LDA draws **one straight fence between them**:
+- Each cloud's **center** `μ₀, μ₁` = the mean point of that class; the **within-class spread** `Σ` = a 4×4 covariance of the points.
+- Fence **direction**: `w = Σ⁻¹(μ₁ − μ₀)` — the center-to-center arrow `μ₁−μ₀`, re-weighted by `Σ⁻¹` so wide/noisy directions count less.
+- Fence **position**: `b = −wᵀ(μ₀+μ₁)/2` (the midpoint, plus a small class-balance term).
+- **Decide** a new point `x` by the **sign of `w·x + b`**: positive → one class, negative → the other = which side of the fence it's on.
+
+(LDA is *not* dimensionality reduction — this item scores the reducer, CSP. My from-scratch LDA is bonus 2.11-D.)
 
 **🗣️ Say:** "I implemented **CSP from scratch** in `csp.py` — imports are only numpy, `scipy.linalg.eigh` (explicitly allowed), `sklearn.base`, and my own `generalized_eigh`; no library CSP. The algorithm, in four steps: reduce because the answer is oscillation size and 45 trials can't fill 20k-D; build per-class covariances; solve `eigh(C1, C1+C2)` for the filters whose eigenvalue is farthest from 0.5; then blend with `@` and take log-variance → 4 numbers."
 **🖥️ Show:** `pytest tests/test_csp_parity.py -v` → **PASSED** (matches `mne.decoding.CSP` within 0.05 on identical splits, ≥ 0.60 on a single subject).
