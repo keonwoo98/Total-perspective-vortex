@@ -7,7 +7,13 @@ models/
 *.pkl
 .DS_Store
 .pytest_cache/
-docs/superpowers/specs/*.bak
+
+# Secrets (API keys, etc. — never commit)
+.env
+
+# Defense docs & audio (kept locally, not committed to GitHub)
+docs/
+*.mp3
 
 # Subject PDFs (kept locally, never committed)
 Intra Projects total-perspective-vortex Edit.pdf

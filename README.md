@@ -4,9 +4,6 @@ EEG brain-computer interface (BCI) that infers which movement a subject performs
 (e.g. left vs right hand) from PhysioNet EEG, using a **from-scratch CSP** dimensionality-reduction
 transformer inside a scikit-learn pipeline.
 
-> 📖 **Full study & defense guide (concepts, math, code, evaluation — beginner-friendly):
-> [`docs/defense-guide.md`](docs/defense-guide.md)**
-
 ## Setup
 ```bash
 python3.12 -m venv .venv
